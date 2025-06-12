@@ -158,40 +158,43 @@ struct PostDetailView: View {
     }
     
     private var postImage: some View {
-        GeometryReader { geo in
-            if let url = URL(string: post.imageURL) {
-                ZoomableAsyncImage(url: url, aspectRatio: $imgRatio)
-                    .frame(width: geo.size.width,
-                           height: (imgRatio ?? 1) * geo.size.width)
-                    .clipped()
-                    .simultaneousGesture(
-                        TapGesture(count: 2)
-                            .onEnded { handleDoubleTapLike() }
-                    )
-                    .overlay(HeartBurstView(trigger: $showHeartBurst))
-                    .overlay(
-                        ForEach(postTags) { tag in
-                            Text(tag.displayName)
-                                .font(.caption2.weight(.semibold))
-                                .padding(6)
-                                .background(.thinMaterial, in: Capsule())
+            GeometryReader { geo in
+                if let url = URL(string: post.imageURL) {
+                    ZoomableAsyncImage(url: url, aspectRatio: $imgRatio)
+                        .frame(width: geo.size.width,
+                               height: (imgRatio ?? 1) * geo.size.width)
+                        .clipped()
+                        .simultaneousGesture(
+                            TapGesture(count: 2).onEnded { handleDoubleTapLike() }
+                        )
+                        .overlay(HeartBurstView(trigger: $showHeartBurst))
+                        // 📌 clickable tag links
+                        .overlay(
+                            ForEach(postTags) { tag in
+                                NavigationLink(destination: ProfileView(userId: tag.id)) {
+                                    Text(tag.displayName)
+                                        .font(.caption2.weight(.semibold))
+                                        .padding(6)
+                                        .background(.thinMaterial, in: Capsule())
+                                }
+                                .buttonStyle(.plain)                        // remove link chrome
                                 .position(
                                     x: tag.xNorm * geo.size.width,
                                     y: tag.yNorm * geo.size.width * (imgRatio ?? 1)
                                 )
-                        }
-                    )
-            } else {
-                ZStack {
-                    Color.gray.opacity(0.2)
-                    Image(systemName: "photo")
-                        .font(.largeTitle)
-                        .foregroundColor(.white.opacity(0.7))
+                            }
+                        )
+                } else {
+                    ZStack {
+                        Color.gray.opacity(0.2)
+                        Image(systemName: "photo")
+                            .font(.largeTitle)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                 }
             }
+            .frame(height: UIScreen.main.bounds.width * (imgRatio ?? 1))
         }
-        .frame(height: UIScreen.main.bounds.width * (imgRatio ?? 1))
-    }
     
     private var actionRow: some View {
         HStack(spacing: 24) {

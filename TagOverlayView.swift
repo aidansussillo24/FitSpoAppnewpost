@@ -2,9 +2,7 @@
 //  TagOverlayView.swift
 //  FitSpo
 //
-//  Full-screen editor for tagging users on a photo.
-//  • Single tap on the image → opens username search sheet
-//  • Select a user to place a draggable label
+//  Full‑screen editor for adding & positioning user‑tags atop a photo.
 //
 
 import SwiftUI
@@ -13,86 +11,97 @@ import FirebaseFirestore
 struct TagOverlayView: View {
     
     let baseImage: UIImage
-    @State private var imgSize: CGSize = .zero
+    private let imgAspect: CGFloat          // h ÷ w
     
-    // Current tags
+    // Existing tags
     @State private var tags: [UserTag]
     
-    // Search state
+    // Search sheet state
+    @State private var showSearchSheet = false
     @State private var query   = ""
     @State private var results: [(id:String,name:String)] = []
     
-    // Callback
-    var onDone: ([UserTag]) -> Void
-    
-    // Point waiting for a username
+    // Point awaiting a username (normalised 0…1)
     @State private var pendingPoint: (CGFloat,CGFloat)? = nil
     
-    // ── init ─────────────────────────────────────────────────────────
+    // Callback when user hits Done / Cancel
+    var onDone: ([UserTag]) -> Void
+    
     init(baseImage: UIImage,
          existing: [UserTag],
          onDone: @escaping ([UserTag]) -> Void) {
         self.baseImage = baseImage
+        self.imgAspect = baseImage.size.height / baseImage.size.width
         _tags  = State(initialValue: existing)
         self.onDone = onDone
     }
     
-    // ── UI ───────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────
+    // MARK:  UI
+    // ─────────────────────────────────────────────────────────────
     var body: some View {
         NavigationStack {
-            ZStack {
-                GeometryReader { geo in
+            GeometryReader { geo in
+                let fullW = geo.size.width
+                let dispH = fullW * imgAspect
+                let topPad = max((geo.size.height - dispH) / 2, 0)
+                let imgSize = CGSize(width: fullW, height: dispH)
+                
+                ZStack(alignment: .topLeading) {
+                    
+                    // 1️⃣  Photo
                     Image(uiImage: baseImage)
                         .resizable()
-                        .scaledToFit()
-                        .onAppear { imgSize = geo.size }
-                        // zero-distance drag gives us a CGPoint
+                        .frame(width: fullW, height: dispH)
+                        .clipped()
+                        .contentShape(Rectangle())
+                        .offset(y: topPad)
+                        // tap → open search sheet
                         .gesture(
                             DragGesture(minimumDistance: 0)
-                                .onEnded { value in
-                                    startSearch(at: value.location, in: geo.size)
+                                .onEnded { g in
+                                    let loc = g.location
+                                    guard loc.y >= topPad &&
+                                          loc.y <= topPad + dispH else { return }
+                                    let xN = loc.x / fullW
+                                    let yN = (loc.y - topPad) / dispH
+                                    pendingPoint = (xN, yN)
+                                    showSearchSheet = true
                                 }
                         )
+                    
+                    // 2️⃣  Editable tag labels
+                    ForEach(tags.indices, id:\.self) { idx in
+                        TagLabelView(
+                            tag: $tags[idx],
+                            parentSize: imgSize,
+                            topPadding: topPad
+                        )
+                    }
                 }
-                .ignoresSafeArea()
-                
-                ForEach(tags.indices, id:\.self) { idx in
-                    TagLabelView(tag: $tags[idx], parentSize: imgSize)
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .ignoresSafeArea()
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { onDone(tags) }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { onDone(tags) }
-                        .fontWeight(.bold)
+                    Button("Done") { onDone(tags) }.fontWeight(.bold)
                 }
             }
-            // Username search sheet
-            .sheet(isPresented: Binding(
-                get: { !query.isEmpty },
-                set: { if !$0 { query = "" }})
-            ) {
+            .sheet(isPresented: $showSearchSheet, onDismiss: resetSearch) {
                 SearchUserSheet(
                     query: $query,
                     results: $results,
                     onSelect: { uid, name in
                         addTag(uid: uid, name: name)
-                        query = ""
+                        resetSearch()
                     }
                 )
                 .presentationDetents([.medium, .large])
             }
         }
-    }
-    
-    // ── Helpers ──────────────────────────────────────────────────────
-    private func startSearch(at location: CGPoint, in size: CGSize) {
-        guard size.width > 0, size.height > 0 else { return }
-        pendingPoint = (location.x / size.width,
-                        location.y / size.height)
-        query = "@"    // open sheet
     }
     
     private func addTag(uid: String, name: String) {
@@ -101,16 +110,21 @@ struct TagOverlayView: View {
                             xNorm: pt.0,
                             yNorm: pt.1,
                             displayName: name))
-        pendingPoint = nil
+    }
+    
+    private func resetSearch() {
+        query = ""; results = []; pendingPoint = nil; showSearchSheet = false
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MARK: Draggable label
-// ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MARK:  Draggable label
+// ─────────────────────────────────────────────────────────────
 private struct TagLabelView: View {
+    
     @Binding var tag: UserTag
-    var parentSize: CGSize
+    var parentSize: CGSize          // size of displayed image
+    var topPadding: CGFloat         // distance from top of screen
     
     @State private var offset: CGSize = .zero
     
@@ -123,27 +137,26 @@ private struct TagLabelView: View {
             .offset(offset)
             .position(
                 x: tag.xNorm * parentSize.width,
-                y: tag.yNorm * parentSize.height
+                y: topPadding + tag.yNorm * parentSize.height
             )
             .gesture(
                 DragGesture()
                     .onChanged { g in offset = g.translation }
                     .onEnded   { _ in
-                        let newX = (tag.xNorm * parentSize.width  + offset.width)
-                                   / parentSize.width
-                        let newY = (tag.yNorm * parentSize.height + offset.height)
-                                   / parentSize.height
-                        tag.xNorm = min(max(newX, 0), 1)
-                        tag.yNorm = min(max(newY, 0), 1)
+                        // Update normalised coords
+                        let newAbsX = tag.xNorm * parentSize.width  + offset.width
+                        let newAbsY = tag.yNorm * parentSize.height + offset.height
+                        tag.xNorm = min(max(newAbsX / parentSize.width , 0), 1)
+                        tag.yNorm = min(max(newAbsY / parentSize.height, 0), 1)
                         offset = .zero
                     }
             )
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MARK: Username search sheet
-// ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MARK:  Username / Display‑name search
+// ─────────────────────────────────────────────────────────────
 private struct SearchUserSheet: View {
     @Binding var query: String
     @Binding var results: [(id:String,name:String)]
@@ -153,32 +166,58 @@ private struct SearchUserSheet: View {
         NavigationStack {
             List {
                 ForEach(results, id:\.id) { r in
-                    Button {
-                        onSelect(r.id, r.name)
-                    } label: {
-                        Text(r.name)
-                    }
+                    Button { onSelect(r.id, r.name) } label: { Text(r.name) }
                 }
             }
             .navigationTitle("Tag someone")
-            .searchable(text: $query, prompt: "username")
+            .searchable(text: $query, prompt: "Username or name")
             .onChange(of: query) { _ in fetch() }
         }
     }
     
     private func fetch() {
-        guard query.count >= 2 else { results = []; return }
-        let q = query.lowercased()
-        Firestore.firestore().collection("users")
-            .whereField("username_lc", isGreaterThanOrEqualTo: q)
-            .whereField("username_lc", isLessThan: q + "\u{f8ff}")
-            .limit(to: 10)
-            .getDocuments { snap, _ in
-                results = snap?.documents.compactMap { d in
-                    let id   = d.documentID
-                    let name = d["displayName"] as? String ?? "user"
-                    return (id,name)
-                } ?? []
+        let trimmed = query
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+            .lowercased()
+        guard trimmed.count >= 2 else { results = []; return }
+        
+        let users = Firestore.firestore().collection("users")
+        var collected: [(String,String)] = []
+        let grp = DispatchGroup()
+        
+        // username_lc
+        grp.enter()
+        users.whereField("username_lc", isGreaterThanOrEqualTo: trimmed)
+             .whereField("username_lc", isLessThan: trimmed + "\u{f8ff}")
+             .limit(to: 10)
+             .getDocuments { snap, _ in
+                 collected.append(contentsOf:
+                    snap?.documents.map {
+                        ($0.documentID, $0["displayName"] as? String ?? "user")
+                    } ?? [])
+                 grp.leave()
+             }
+        // displayName_lc
+        grp.enter()
+        users.whereField("displayName_lc", isGreaterThanOrEqualTo: trimmed)
+             .whereField("displayName_lc", isLessThan: trimmed + "\u{f8ff}")
+             .limit(to: 10)
+             .getDocuments { snap, _ in
+                 collected.append(contentsOf:
+                    snap?.documents.map {
+                        ($0.documentID, $0["displayName"] as? String ?? "user")
+                    } ?? [])
+                 grp.leave()
+             }
+        
+        grp.notify(queue: .main) {
+            var seen = Set<String>(); var unique:[(String,String)] = []
+            for item in collected where !seen.contains(item.0) {
+                seen.insert(item.0); unique.append(item)
+                if unique.count == 10 { break }
             }
+            results = unique
+        }
     }
 }
