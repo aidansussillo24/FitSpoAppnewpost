@@ -1,56 +1,46 @@
-//  Replace file: NetworkService.swift
+//
+//  NetworkService.swift
 //  FitSpo
 //
-//  COMPLETE, up-to-date implementation.
+//  Whole file – original functionality + tags support.
 //
-//  • Adds lowercase helper fields (`username_lc`, `displayName_lc`) when a
-//    profile is first created so search remains fast once you switch back to
-//    server-side prefix queries.
-//  • Introduces simple reachability with `NWPathMonitor` and the static
-//    flag `isOnline`, which `ExploreView` waits on during cold-start.
-//  • Preserves ALL of your existing post / follow / helper methods.
-//
-//  Copy-and-paste this ENTIRE file over the old NetworkService.swift.
 
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import FirebaseStorage
-import Network            // ← reachability
+import Network
 import UIKit
 
-/// Central Firebase + Storage + network helper
+// ─────────────────────────────────────────────────────────────────────────
 final class NetworkService {
-
-    // MARK: – Shared instance & reachability -----------------------------
+    
+    // MARK: – Shared instance & reachability
     static let shared = NetworkService()
     private init() { startPathMonitor() }
-
+    
     private let monitor = NWPathMonitor()
     private let queue   = DispatchQueue(label: "FitSpo.NetMonitor")
     private var pathStatus: NWPath.Status = .satisfied
-
-    /// True when the device currently has an internet path.
+    
     static var isOnline: Bool { shared.pathStatus == .satisfied }
-
+    
     private func startPathMonitor() {
         monitor.pathUpdateHandler = { [weak self] path in
             self?.pathStatus = path.status
         }
         monitor.start(queue: queue)
     }
-
-    // MARK: – Firebase handles ------------------------------------------
+    
+    // MARK: – Firebase handles
     let db      = Firestore.firestore()
     private let storage = Storage.storage().reference()
-
-    // ────────────────────────────────────────────────────────────────────
-    // MARK:  Create User Profile
-    // ────────────────────────────────────────────────────────────────────
-    /// Persists a new user doc and writes lowercase helper fields.
+    
+    // ====================================================================
+    // MARK:  User profile
+    // ====================================================================
     func createUserProfile(userId: String,
                            data: [String: Any]) async throws {
-
         var d = data
         if let username = data["username"] as? String {
             d["username_lc"] = username.lowercased()
@@ -58,20 +48,20 @@ final class NetworkService {
         if let name = data["displayName"] as? String {
             d["displayName_lc"] = name.lowercased()
         }
-
         try await db.collection("users")
             .document(userId)
             .setData(d)
     }
-
-    // ────────────────────────────────────────────────────────────────────
-    // MARK:  Upload Post (stores hashtags[])
-    // ────────────────────────────────────────────────────────────────────
+    
+    // ====================================================================
+    // MARK:  Upload Post  (hashtags + tags)
+    // ====================================================================
     func uploadPost(
         image: UIImage,
         caption: String,
         latitude: Double?,
         longitude: Double?,
+        tags: [UserTag],
         completion: @escaping (Result<Void,Error>) -> Void
     ) {
         guard let me = Auth.auth().currentUser else {
@@ -80,19 +70,19 @@ final class NetworkService {
         guard let jpeg = image.jpegData(compressionQuality: 0.8) else {
             return completion(.failure(Self.imageError()))
         }
-
+        
         let imgID = UUID().uuidString
         let ref   = storage.child("post_images/\(imgID).jpg")
-
+        
         ref.putData(jpeg, metadata: nil) { [weak self] _, err in
             if let err { return completion(.failure(err)) }
-
+            
             ref.downloadURL { url, err in
                 if let err { return completion(.failure(err)) }
                 guard let url else {
                     return completion(.failure(Self.storageURLError()))
                 }
-
+                
                 var post: [String:Any] = [
                     "userId"   : me.uid,
                     "imageURL" : url.absoluteString,
@@ -104,39 +94,80 @@ final class NetworkService {
                 ]
                 if let latitude  { post["latitude"]  = latitude  }
                 if let longitude { post["longitude"] = longitude }
-
-                self?.db.collection("posts")
-                    .addDocument(data: post) { err in
+                
+                // 1. create the post doc
+                let doc = self?.db.collection("posts").document()
+                doc?.setData(post) { err in
+                    if let err { return completion(.failure(err)) }
+                    
+                    // 2. save tags sub-collection
+                    let batch = self?.db.batch()
+                    tags.forEach { t in
+                        let ref = doc!.collection("tags").document(t.id)
+                        batch?.setData([
+                            "uid"         : t.id,
+                            "displayName" : t.displayName,
+                            "xNorm"       : t.xNorm,
+                            "yNorm"       : t.yNorm
+                        ], forDocument: ref)
+                    }
+                    batch?.commit { err in
                         err == nil ? completion(.success(()))
                                    : completion(.failure(err!))
                     }
+                }
             }
         }
     }
-
-    // ────────────────────────────────────────────────────────────────────
+    
+    // ====================================================================
     // MARK:  Fetch Posts (home feed)
-    // ────────────────────────────────────────────────────────────────────
+    // ====================================================================
     func fetchPosts(completion: @escaping (Result<[Post],Error>) -> Void) {
         db.collection("posts")
-          .order(by: "timestamp", descending: true)
-          .getDocuments { snap, err in
-              if let err { completion(.failure(err)); return }
-              let posts = snap?.documents.compactMap(Self.decodePost) ?? []
-              completion(.success(posts))
-          }
+            .order(by: "timestamp", descending: true)
+            .getDocuments { snap, err in
+                if let err { completion(.failure(err)); return }
+                let posts = snap?.documents.compactMap(Self.decodePost) ?? []
+                completion(.success(posts))
+            }
     }
-
-    // ────────────────────────────────────────────────────────────────────
-    // MARK:  Toggle Like
-    // ────────────────────────────────────────────────────────────────────
+    
+    // ====================================================================
+    // MARK:  Tags helper
+    // ====================================================================
+    func fetchTags(for postId: String,
+                   completion: @escaping (Result<[UserTag],Error>) -> Void) {
+        db.collection("posts").document(postId)
+            .collection("tags")
+            .getDocuments { snap, err in
+                if let err { completion(.failure(err)); return }
+                let list: [UserTag] = snap?.documents.compactMap { d in
+                    guard
+                        let x = d["xNorm"]       as? Double,
+                        let y = d["yNorm"]       as? Double,
+                        let n = d["displayName"] as? String
+                    else { return nil }
+                    return UserTag(
+                        id: d.documentID,
+                        xNorm: x, yNorm: y,
+                        displayName: n
+                    )
+                } ?? []
+                completion(.success(list))
+            }
+    }
+    
+    // ====================================================================
+    // MARK:  Likes
+    // ====================================================================
     func toggleLike(post: Post,
                     completion: @escaping (Result<Post,Error>) -> Void) {
         let ref      = db.collection("posts").document(post.id)
         let delta    = post.isLiked ? -1 : 1
         let newLikes = post.likes + delta
         let newLiked = !post.isLiked
-
+        
         ref.updateData([
             "likes"  : newLikes,
             "isLiked": newLiked
@@ -148,27 +179,28 @@ final class NetworkService {
             completion(.success(updated))
         }
     }
-
-    // ────────────────────────────────────────────────────────────────────
-    // MARK:  Delete Post (Firestore doc + Storage asset)
-    // ────────────────────────────────────────────────────────────────────
+    
+    // ====================================================================
+    // MARK:  Delete Post
+    // ====================================================================
     func deletePost(id: String,
                     completion: @escaping (Result<Void,Error>) -> Void) {
         let ref = db.collection("posts").document(id)
         ref.getDocument { snap, err in
             if let err { return completion(.failure(err)) }
-
-            guard let d  = snap?.data(),
-                  let str = d["imageURL"] as? String,
-                  let url = URL(string: str)
-            else {                                  // no image URL → delete doc only
+            
+            guard
+                let d  = snap?.data(),
+                let str = d["imageURL"] as? String,
+                let url = URL(string: str)
+            else {
                 ref.delete { err in
                     err == nil ? completion(.success(()))
                                : completion(.failure(err!))
                 }
                 return
             }
-
+            
             Storage.storage()
                 .reference(withPath: url.path.dropFirst().description)
                 .delete { _ in
@@ -179,73 +211,70 @@ final class NetworkService {
                 }
         }
     }
-
-    // ────────────────────────────────────────────────────────────────────
-    // MARK:  Follow / Unfollow / Counts
-    // ────────────────────────────────────────────────────────────────────
+    
+    // ====================================================================
+    // MARK:  Follow helpers (unchanged)
+    // ====================================================================
     func follow(userId: String, completion: @escaping (Error?) -> Void) {
         guard let me = Auth.auth().currentUser?.uid else {
             return completion(Self.authError())
         }
         let batch = db.batch()
         let follower  = db.collection("users").document(userId)
-                          .collection("followers").document(me)
+            .collection("followers").document(me)
         let following = db.collection("users").document(me)
-                          .collection("following").document(userId)
+            .collection("following").document(userId)
         batch.setData([:], forDocument: follower)
         batch.setData([:], forDocument: following)
         batch.commit(completion: completion)
     }
-
+    
     func unfollow(userId: String, completion: @escaping (Error?) -> Void) {
         guard let me = Auth.auth().currentUser?.uid else {
             return completion(Self.authError())
         }
         let batch = db.batch()
         let follower  = db.collection("users").document(userId)
-                          .collection("followers").document(me)
+            .collection("followers").document(me)
         let following = db.collection("users").document(me)
-                          .collection("following").document(userId)
+            .collection("following").document(userId)
         batch.deleteDocument(follower)
         batch.deleteDocument(following)
         batch.commit(completion: completion)
     }
-
+    
     func isFollowing(userId: String,
                      completion: @escaping (Result<Bool,Error>) -> Void) {
         guard let me = Auth.auth().currentUser?.uid else {
             return completion(.failure(Self.authError()))
         }
         db.collection("users").document(userId)
-          .collection("followers").document(me)
-          .getDocument { snap, err in
-              if let err { completion(.failure(err)); return }
-              completion(.success(snap?.exists == true))
-          }
+            .collection("followers").document(me)
+            .getDocument { snap, err in
+                if let err { completion(.failure(err)); return }
+                completion(.success(snap?.exists == true))
+            }
     }
-
+    
     func fetchFollowCount(userId: String,
                           type: String,
                           completion: @escaping (Result<Int,Error>) -> Void) {
         db.collection("users").document(userId)
-          .collection(type)
-          .getDocuments { snap, err in
-              if let err { completion(.failure(err)); return }
-              completion(.success(snap?.documents.count ?? 0))
-          }
+            .collection(type)
+            .getDocuments { snap, err in
+                if let err { completion(.failure(err)); return }
+                completion(.success(snap?.documents.count ?? 0))
+            }
     }
-
-    // ==================================================================
+    
+    // ====================================================================
     // MARK:  Private helpers
-    // ==================================================================
-
-    /// `#hashtag` extractor (case-insensitive, deduped, lower-cased)
+    // ====================================================================
     private static func extractHashtags(from caption: String) -> [String] {
         let pattern = "(?:\\s|^)#(\\w+)"
         guard let rx = try? NSRegularExpression(pattern: pattern,
                                                 options: .caseInsensitive)
         else { return [] }
-
         let nsRange = NSRange(caption.startIndex..., in: caption)
         let matches = rx.matches(in: caption, range: nsRange)
         let tags = matches.compactMap { m -> String? in
@@ -254,8 +283,7 @@ final class NetworkService {
         }
         return Array(Set(tags))
     }
-
-    // Quick NSError helpers
+    
     private static func authError() -> NSError {
         NSError(domain: "Auth", code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
@@ -268,8 +296,8 @@ final class NetworkService {
         NSError(domain: "Storage", code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "No download URL"])
     }
-
-    /// Shared doc→Post mapping used by both home-feed and Explore queries
+    
+    // shared doc→Post mapping
     fileprivate static func decodePost(doc: QueryDocumentSnapshot) -> Post? {
         let d = doc.data()
         guard
@@ -280,7 +308,7 @@ final class NetworkService {
             let likes     = d["likes"]     as? Int,
             let isLiked   = d["isLiked"]   as? Bool
         else { return nil }
-
+        
         return Post(
             id:        doc.documentID,
             userId:    uid,
