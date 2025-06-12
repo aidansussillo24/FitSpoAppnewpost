@@ -7,7 +7,9 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 import CoreLocation
+import UIKit
 
+// ─────────────────────────────────────────────────────────────
 struct PostDetailView: View {
     let post: Post
     @Environment(\.dismiss) private var dismiss
@@ -39,6 +41,9 @@ struct PostDetailView: View {
     // live doc listener
     @State private var postListener: ListenerRegistration?
 
+    // image aspect-ratio (h ÷ w) – updated once the file is downloaded
+    @State private var imgRatio: CGFloat? = nil   // ← key for variable height
+
     init(post: Post) {
         self.post = post
         _isLiked    = State(initialValue: post.isLiked)
@@ -65,7 +70,7 @@ struct PostDetailView: View {
                 CommentsOverlay(
                     post: post,
                     isPresented: $showComments,
-                    onCommentCountChange: { commentCount = $0 }   // live update
+                    onCommentCountChange: { commentCount = $0 }
                 )
                 .transition(.move(edge: .bottom))
             }
@@ -111,10 +116,10 @@ struct PostDetailView: View {
             }
         )
         .onAppear {
-            attachPostListener()   // live likes & commentCount
+            attachPostListener()
             fetchAuthor()
             fetchLocationName()
-            fetchCommentCount()    // ← ensures 💬 count is right on first load
+            fetchCommentCount()
         }
         .onDisappear { postListener?.remove() }
     }
@@ -141,39 +146,37 @@ struct PostDetailView: View {
         .padding(.horizontal)
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // MARK: Zoomable image keeping original aspect-ratio
+    // ─────────────────────────────────────────────────────────────
     private var postImage: some View {
-        ZStack {
-            AsyncImage(url: URL(string: post.imageURL)) { phase in
-                switch phase {
-                case .empty:
-                    ZStack { Color.gray.opacity(0.2); ProgressView() }
-                case .success(let img):
-                    img.resizable().scaledToFit()
-                case .failure:
-                    ZStack {
-                        Color.gray.opacity(0.2)
-                        Image(systemName: "photo")
-                            .font(.largeTitle)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                @unknown default: EmptyView()
+        GeometryReader { geo in
+            if let url = URL(string: post.imageURL) {
+                ZoomableAsyncImage(url: url, aspectRatio: $imgRatio)
+                    .frame(
+                        width: geo.size.width,
+                        height: (imgRatio ?? 1) * geo.size.width
+                    )
+                    .clipped()
+                    .simultaneousGesture(
+                        TapGesture(count: 2).onEnded { handleDoubleTapLike() }
+                    )
+            } else {
+                // fallback
+                ZStack {
+                    Color.gray.opacity(0.2)
+                    Image(systemName: "photo")
+                        .font(.largeTitle)
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
-            .contentShape(Rectangle())
-            .gesture(
-                TapGesture(count: 2).onEnded { handleDoubleTapLike() }
-            )
-
-            Image(systemName: "heart.fill")
-                .resizable()
-                .foregroundColor(.white)
-                .frame(width: 100, height: 100)
-                .opacity(showHeartBurst ? 1 : 0)
-                .scaleEffect(showHeartBurst ? 1 : 0.3)
-                .animation(.easeOut(duration: 0.35), value: showHeartBurst)
         }
-        .frame(maxWidth: .infinity)
-        .clipped()
+        // give the GeometryReader itself a matching height so
+        // the VStack/ScrollView knows the correct size
+        .frame(height: UIScreen.main.bounds.width * (imgRatio ?? 1))
+        .overlay(
+            HeartBurstView(trigger: $showHeartBurst)      // ← NEW
+        )
     }
 
     private var actionRow: some View {
@@ -243,7 +246,7 @@ struct PostDetailView: View {
         .clipShape(Circle())
     }
 
-    // MARK: — Live Firestore listener --------------------------------------
+    // MARK: — Firestore listener & helpers ---------------------------------
 
     private func attachPostListener() {
         guard postListener == nil else { return }
@@ -258,8 +261,6 @@ struct PostDetailView: View {
             }
         }
     }
-
-    // MARK: — Actions -------------------------------------------------------
 
     private func toggleLike() {
         isLiked.toggle()
@@ -282,8 +283,6 @@ struct PostDetailView: View {
             }
         }
     }
-
-    // MARK: — Data fetch helpers -------------------------------------------
 
     private func fetchAuthor() {
         Firestore.firestore()
@@ -315,8 +314,6 @@ struct PostDetailView: View {
         }
     }
 
-    // MARK: — Share helper --------------------------------------------------
-
     private func sharePost(to userId: String) {
         guard let me = Auth.auth().currentUser?.uid else { return }
         let pair = [me, userId].sorted()
@@ -327,6 +324,120 @@ struct PostDetailView: View {
                 DispatchQueue.main.async { shareChat = chat; navigateToChat = true }
             case .failure(let err):
                 print("Chat creation error:", err)
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: ZoomableAsyncImage  (UIKit wrapper)
+// ─────────────────────────────────────────────────────────────
+fileprivate struct ZoomableAsyncImage: UIViewRepresentable {
+    let url: URL
+    @Binding var aspectRatio: CGFloat?     // updated once we know it
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scroll = UIScrollView()
+        scroll.delegate = context.coordinator
+        scroll.maximumZoomScale = 4
+        scroll.minimumZoomScale = 1
+        scroll.bouncesZoom      = true
+        scroll.showsVerticalScrollIndicator   = false
+        scroll.showsHorizontalScrollIndicator = false
+
+        // host SwiftUI AsyncImage
+        let hosted = UIHostingController(
+            rootView: AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ZStack { Color.gray.opacity(0.2); ProgressView() }
+                case .success(let img):
+                    img.resizable().aspectRatio(contentMode: .fit)
+                case .failure:
+                    ZStack {
+                        Color.gray.opacity(0.2)
+                        Image(systemName: "photo")
+                            .font(.largeTitle)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                @unknown default: EmptyView()
+                }
+            }
+        )
+        hosted.view.backgroundColor = .clear
+        hosted.view.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(hosted.view)
+
+        // width = scroll width  |  height = width * ratio  (ratio defaults to 1)
+        context.coordinator.heightConstraint =
+            hosted.view.heightAnchor.constraint(equalTo: hosted.view.widthAnchor, multiplier: 1)
+
+        NSLayoutConstraint.activate([
+            hosted.view.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            hosted.view.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            hosted.view.topAnchor.constraint(equalTo: scroll.topAnchor),
+            hosted.view.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            hosted.view.widthAnchor.constraint(equalTo: scroll.widthAnchor),
+            context.coordinator.heightConstraint!
+        ])
+
+        // load image once in the background to get its size
+        context.coordinator.computeAspectRatioIfNeeded()
+
+        context.coordinator.zoomView = hosted.view
+        return scroll
+    }
+
+    func updateUIView(_ uiView: UIScrollView, context: Context) {
+        // nothing else to update
+    }
+
+    // ── Coordinator (delegate + helper) ──
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        private let parent: ZoomableAsyncImage
+        weak   var zoomView: UIView?
+        var    heightConstraint: NSLayoutConstraint?
+        var    alreadyFetched = false
+
+        init(_ parent: ZoomableAsyncImage) { self.parent = parent }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { zoomView }
+
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            guard let v = zoomView else { return }
+            let boundsSize = scrollView.bounds.size
+            var frame = v.frame
+
+            // centre when smaller than viewport
+            frame.origin.x = frame.size.width  < boundsSize.width  ? (boundsSize.width  - frame.size.width ) / 2 : 0
+            frame.origin.y = frame.size.height < boundsSize.height ? (boundsSize.height - frame.size.height) / 2 : 0
+            v.frame = frame
+        }
+
+        /// Downloads just the header of the image file → creates UIImage → updates ratio
+        func computeAspectRatioIfNeeded() {
+            guard !alreadyFetched else { return }
+            alreadyFetched = true
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                guard let data = try? Data(contentsOf: self.parent.url, options: .mappedIfSafe),
+                      let ui = UIImage(data: data) else { return }
+                let ratio = ui.size.height / ui.size.width
+                DispatchQueue.main.async {
+                    // update binding to SwiftUI
+                    self.parent.aspectRatio = ratio
+                    // update UIKit constraint
+                    self.heightConstraint?.isActive = false
+                    if let view = self.zoomView {
+                        self.heightConstraint =
+                            view.heightAnchor.constraint(equalTo: view.widthAnchor, multiplier: ratio)
+                        self.heightConstraint?.isActive = true
+                        view.setNeedsLayout()
+                        view.layoutIfNeeded()
+                    }
+                }
             }
         }
     }
