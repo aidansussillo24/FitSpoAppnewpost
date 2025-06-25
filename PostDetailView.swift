@@ -308,9 +308,25 @@ struct PostDetailView: View {
     // MARK: weather helper ------------------------------------
     @ViewBuilder private var weatherIconView: some View {
         if let name = post.weatherSymbolName {
-            Image(systemName: name)
-                .padding(6)
-                .background(.ultraThinMaterial, in: Circle())
+            if let (primary, secondary) = post.weatherIconColors {
+                if let secondary = secondary {
+                    Image(systemName: name)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(primary, secondary)
+                        .padding(6)
+                        .background(.ultraThinMaterial, in: Circle())
+                } else {
+                    Image(systemName: name)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(primary)
+                        .padding(6)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+            } else {
+                Image(systemName: name)
+                    .padding(6)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
         }
     }
 
