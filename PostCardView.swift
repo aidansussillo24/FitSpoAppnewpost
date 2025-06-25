@@ -79,28 +79,30 @@ struct PostCardView: View {
     // MARK: – weather helper
     @ViewBuilder private var weatherIconView: some View {
         if let name = post.weatherSymbolName {
-            if let (primary, secondary) = post.weatherIconColors {
-                if let secondary = secondary {
-                    Image(systemName: name)
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(primary, secondary)
-                        .padding(6)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .padding(8)
+            HStack(spacing: 4) {
+                if let temp = post.tempString {
+                    Text(temp)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+
+                if let (primary, secondary) = post.weatherIconColors {
+                    if let secondary = secondary {
+                        Image(systemName: name)
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(primary, secondary)
+                    } else {
+                        Image(systemName: name)
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(primary)
+                    }
                 } else {
                     Image(systemName: name)
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(primary)
-                        .padding(6)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .padding(8)
                 }
-            } else {
-                Image(systemName: name)
-                    .padding(6)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .padding(8)
             }
+            .padding(6)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(8)
         }
     }
 
@@ -134,8 +136,8 @@ struct PostCardView_Previews: PreviewProvider {
                 isLiked:   false,
                 latitude:  nil,
                 longitude: nil,
-                temp:      nil,
-                weatherIcon: nil,
+                temp:      22,
+                weatherIcon: "01d",
                 hashtags:  []
             )
         ) { }
