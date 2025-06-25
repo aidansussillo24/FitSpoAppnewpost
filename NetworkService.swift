@@ -28,6 +28,9 @@ final class NetworkService {
     private var pathStatus: NWPath.Status = .satisfied
     static var isOnline: Bool { shared.pathStatus == .satisfied }
 
+    /// OpenWeather API key – replace with your own
+    private static let openWeatherKey = "YOUR_OPENWEATHER_KEY"
+
     private func startPathMonitor() {
         monitor.pathUpdateHandler = { [weak self] path in
             self?.pathStatus = path.status
@@ -135,31 +138,43 @@ final class NetworkService {
                 ]
                 if let latitude  { data["latitude"]  = latitude  }
                 if let longitude { data["longitude"] = longitude }
+                
+                func finishWrite() {
+                    // 3️⃣ write doc
+                    let doc = self.db.collection("posts").document()
+                    doc.setData(data) { err in
+                        if let err { completion(.failure(err)); return }
 
-                // 3️⃣ write doc
-                let doc = self.db.collection("posts").document()
-                doc.setData(data) { err in
-                    if let err { completion(.failure(err)); return }
+                        // 4️⃣ face‑tags sub‑docs
+                        guard !tags.isEmpty else {
+                            NotificationCenter.default.post(name: .didUploadPost, object: nil)
+                            completion(.success(())); return
+                        }
+                        let batch = self.db.batch()
+                        tags.forEach { t in
+                            batch.setData([
+                                "uid"        : t.id,
+                                "displayName": t.displayName,
+                                "xNorm"      : t.xNorm,
+                                "yNorm"      : t.yNorm
+                            ], forDocument: doc.collection("tags").document(t.id))
+                        }
+                        batch.commit { err in
+                            NotificationCenter.default.post(name: .didUploadPost, object: nil)
+                            err == nil ? completion(.success(()))
+                                       : completion(.failure(err!))
+                        }
+                    }
+                }
 
-                    // 4️⃣ face‑tags sub‑docs
-                    guard !tags.isEmpty else {
-                        NotificationCenter.default.post(name: .didUploadPost, object: nil)
-                        completion(.success(())); return
+                if let lat = latitude, let lon = longitude {
+                    self.fetchWeather(lat: lat, lon: lon) { icon, temperature in
+                        if let icon { data["weatherIcon"] = icon }
+                        if let temperature { data["temp"] = temperature }
+                        finishWrite()
                     }
-                    let batch = self.db.batch()
-                    tags.forEach { t in
-                        batch.setData([
-                            "uid"        : t.id,
-                            "displayName": t.displayName,
-                            "xNorm"      : t.xNorm,
-                            "yNorm"      : t.yNorm
-                        ], forDocument: doc.collection("tags").document(t.id))
-                    }
-                    batch.commit { err in
-                        NotificationCenter.default.post(name: .didUploadPost, object: nil)
-                        err == nil ? completion(.success(()))
-                                   : completion(.failure(err!))
-                    }
+                } else {
+                    finishWrite()
                 }
             }
         }
@@ -326,6 +341,31 @@ final class NetworkService {
                 userInfo: [NSLocalizedDescriptionKey:"No download URL"])
     }
 
+    // Fetch weather data from OpenWeather
+    private func fetchWeather(lat: Double, lon: Double,
+                              completion: @escaping (String?, Double?) -> Void) {
+        let key = Self.openWeatherKey
+        guard !key.isEmpty else { completion(nil, nil); return }
+        let urlStr = "https://api.openweathermap.org/data/2.5/weather?lat=\(lat)&lon=\(lon)&appid=\(key)&units=metric"
+        guard let url = URL(string: urlStr) else { completion(nil, nil); return }
+
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data,
+                  let res = try? JSONDecoder().decode(OpenWeatherResponse.self, from: data),
+                  let icon = res.weather.first?.icon else {
+                completion(nil, nil); return
+            }
+            completion(icon, res.main.temp)
+        }.resume()
+    }
+
+    private struct OpenWeatherResponse: Decodable {
+        struct Weather: Decodable { let icon: String }
+        struct Main: Decodable { let temp: Double }
+        let weather: [Weather]
+        let main: Main
+    }
+
     // decode Firestore → Post
     fileprivate static func decodePost(doc: QueryDocumentSnapshot) -> Post? {
         let d = doc.data()
@@ -349,6 +389,7 @@ final class NetworkService {
             latitude:     d["latitude"]  as? Double,
             longitude:    d["longitude"] as? Double,
             temp:         d["temp"]      as? Double,
+            weatherIcon:  d["weatherIcon"] as? String,
             outfitItems:  parseOutfitItems(d["scanResults"]),
             outfitTags:   parseOutfitTags(d["outfitTags"]),
             hashtags:     d["hashtags"]  as? [String] ?? []

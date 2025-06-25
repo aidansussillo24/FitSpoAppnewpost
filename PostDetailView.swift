@@ -136,6 +136,7 @@ struct PostDetailView: View {
                 }
             }
             Spacer()
+            weatherIconView
         }
         .padding(.horizontal)
     }
@@ -302,6 +303,15 @@ struct PostDetailView: View {
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
+    }
+
+    // MARK: weather helper ------------------------------------
+    @ViewBuilder private var weatherIconView: some View {
+        if let name = post.weatherSymbolName {
+            Image(systemName: name)
+                .padding(6)
+                .background(.ultraThinMaterial, in: Circle())
+        }
     }
 
     // MARK: like helpers ---------------------------------------
