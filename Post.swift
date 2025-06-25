@@ -72,6 +72,11 @@ struct Post: Identifiable, Codable {
         }
     }
 
+    var tempString: String? {
+        guard let c = temp else { return nil }
+        let f = c * 9 / 5 + 32
+        return String(format: "%.0f\u{00B0}", f)
+    }
 
 
     enum CodingKeys: String, CodingKey {
