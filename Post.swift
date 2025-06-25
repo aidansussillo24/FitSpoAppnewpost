@@ -72,10 +72,18 @@ struct Post: Identifiable, Codable {
         }
     }
 
+<<<<<<< mu8du0-codex/add-temperature-display-next-to-it
+    /// Temperature in Fahrenheit as a rounded string with degree symbol
+    var tempString: String? {
+        guard let c = temp else { return nil }
+        let f = c * 9 / 5 + 32
+        return String(format: "%.0f\u{00B0}", f)
+=======
     /// Temperature as a rounded string with degree symbol
     var tempString: String? {
         guard let t = temp else { return nil }
         return String(format: "%.0f\u{00B0}", t)
+>>>>>>> main
     }
 
     enum CodingKeys: String, CodingKey {
