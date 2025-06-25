@@ -29,7 +29,11 @@ final class NetworkService {
     static var isOnline: Bool { shared.pathStatus == .satisfied }
 
     /// OpenWeather API key – replace with your own
+<<<<<<< 9g2ezq-codex/integrate-weather-support-into-posts
     private static let openWeatherKey = "YOUR_OPENWEATHER_KEY"
+=======
+    private static let openWeatherKey = "fa990912bd254666ff34a71ae54781ba"
+>>>>>>> main
 
     private func startPathMonitor() {
         monitor.pathUpdateHandler = { [weak self] path in
