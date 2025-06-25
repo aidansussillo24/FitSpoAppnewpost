@@ -5,6 +5,7 @@
 
 import Foundation
 import CoreLocation
+import SwiftUI
 
 struct Post: Identifiable, Codable {
 
@@ -50,6 +51,24 @@ struct Post: Identifiable, Codable {
         case "13": return "snow"
         case "50": return "cloud.fog"
         default: return nil
+        }
+    }
+
+    /// Suggested colors for the SF Symbol based on the weather condition
+    var weatherIconColors: (Color, Color?)? {
+        guard let name = weatherSymbolName else { return nil }
+        switch name {
+        case "sun.max":           return (.yellow, nil)
+        case "moon":              return (.white, nil)
+        case "cloud.sun":         return (.white, .yellow)
+        case "cloud.moon":        return (.white, .gray)
+        case "cloud":             return (.white, nil)
+        case "cloud.drizzle":     return (.white, .blue)
+        case "cloud.rain":        return (.white, .blue)
+        case "cloud.bolt":        return (.white, .yellow)
+        case "snow":              return (.white, nil)
+        case "cloud.fog":         return (.white, nil)
+        default:                   return nil
         }
     }
 
