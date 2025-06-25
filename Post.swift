@@ -8,7 +8,7 @@ import CoreLocation
 
 struct Post: Identifiable, Codable {
 
-    // ── Core fields ─────────────────────────────────────────────
+    // core
     let id:        String
     let userId:    String
     let imageURL:  String
@@ -17,15 +17,19 @@ struct Post: Identifiable, Codable {
     var likes:     Int
     var isLiked:   Bool
 
-    // ── Optional geo / weather ─────────────────────────────────
+    // geo / weather
     let latitude:  Double?
     let longitude: Double?
     var  temp:     Double?
 
-    // ── NEW 2.3 — hashtags array (lower-cased, no “#”) ─────────
+    // outfit
+    var outfitItems: [OutfitItem]? = nil
+    var outfitTags : [OutfitTag]?  = nil        // ← NEW
+
+    // hashtags
     var hashtags: [String]
 
-    // Convenience for MapKit
+    // convenience
     var coordinate: CLLocationCoordinate2D? {
         guard let lat = latitude, let lon = longitude else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
@@ -34,5 +38,6 @@ struct Post: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, userId, imageURL, caption, timestamp, likes, isLiked
         case latitude, longitude, temp, hashtags
+        case outfitItems, outfitTags
     }
 }

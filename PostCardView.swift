@@ -2,6 +2,8 @@
 //  PostCardView.swift
 //  FitSpo
 //
+//  Feed card now uses RemoteImage with automatic retry & caching.
+//
 
 import SwiftUI
 import FirebaseFirestore
@@ -16,55 +18,19 @@ struct PostCardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+
             // ── Tap image → PostDetail ─────────────────────────────
             NavigationLink(destination: PostDetailView(post: post)) {
-                AsyncImage(url: URL(string: post.imageURL)) { phase in
-                    switch phase {
-                    case .empty:
-                        ZStack { Color.gray.opacity(0.2); ProgressView() }
-                    case .success(let img):
-                        img.resizable().scaledToFit()
-                    case .failure:
-                        ZStack {
-                            Color.gray.opacity(0.2)
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                    @unknown default: EmptyView()
-                    }
-                }
+                RemoteImage(url: post.imageURL, contentMode: .fit)
             }
             .buttonStyle(.plain)
 
             // ── Footer (avatar, name, like button) ─────────────────
             HStack(spacing: 8) {
+
                 NavigationLink(destination: ProfileView(userId: post.userId)) {
                     HStack(spacing: 8) {
-                        // avatar
-                        if let url = URL(string: authorAvatarURL),
-                           !authorAvatarURL.isEmpty
-                        {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .empty: ProgressView()
-                                case .success(let img):
-                                    img.resizable().scaledToFill()
-                                case .failure:
-                                    Image(systemName: "person.crop.circle.fill")
-                                        .resizable()
-                                @unknown default: EmptyView()
-                                }
-                            }
-                            .frame(width: 24, height: 24)
-                            .clipShape(Circle())
-                        } else {
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                                .foregroundColor(.gray)
-                        }
-
+                        avatarThumb
                         Text(isLoadingAuthor ? "Loading…" : authorName)
                             .font(.subheadline)
                             .fontWeight(.semibold)
@@ -89,8 +55,24 @@ struct PostCardView: View {
         }
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.05),
+                radius: 4, x: 0, y: 2)
         .onAppear(perform: fetchAuthor)
+    }
+
+    // MARK: – avatar helper
+    @ViewBuilder private var avatarThumb: some View {
+        if let url = URL(string: authorAvatarURL),
+           !authorAvatarURL.isEmpty {
+            RemoteImage(url: url.absoluteString, contentMode: .fill)
+                .frame(width: 24, height: 24)
+                .clipShape(Circle())
+        } else {
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .frame(width: 24, height: 24)
+                .foregroundColor(.gray)
+        }
     }
 
     // MARK: – Author fetch
@@ -124,10 +106,9 @@ struct PostCardView_Previews: PreviewProvider {
                 latitude:  nil,
                 longitude: nil,
                 temp:      nil,
-                hashtags:  []        // ← new param
-            ),
-            onLike: {}
-        )
+                hashtags:  []
+            )
+        ) { }
         .padding()
         .previewLayout(.sizeThatFits)
     }
