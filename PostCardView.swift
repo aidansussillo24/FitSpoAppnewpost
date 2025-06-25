@@ -57,6 +57,7 @@ struct PostCardView: View {
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05),
                 radius: 4, x: 0, y: 2)
+        .overlay(alignment: .topTrailing) { weatherIconView }
         .onAppear(perform: fetchAuthor)
     }
 
@@ -72,6 +73,16 @@ struct PostCardView: View {
                 .resizable()
                 .frame(width: 24, height: 24)
                 .foregroundColor(.gray)
+        }
+    }
+
+    // MARK: – weather helper
+    @ViewBuilder private var weatherIconView: some View {
+        if let name = post.weatherSymbolName {
+            Image(systemName: name)
+                .padding(6)
+                .background(.ultraThinMaterial, in: Circle())
+                .padding(8)
         }
     }
 
@@ -106,6 +117,7 @@ struct PostCardView_Previews: PreviewProvider {
                 latitude:  nil,
                 longitude: nil,
                 temp:      nil,
+                weatherIcon: nil,
                 hashtags:  []
             )
         ) { }
