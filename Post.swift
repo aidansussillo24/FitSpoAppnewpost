@@ -72,6 +72,12 @@ struct Post: Identifiable, Codable {
         }
     }
 
+    /// Temperature as a rounded string with degree symbol
+    var tempString: String? {
+        guard let t = temp else { return nil }
+        return String(format: "%.0f\u{00B0}", t)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, userId, imageURL, caption, timestamp, likes, isLiked
         case latitude, longitude, temp, weatherIcon, hashtags
