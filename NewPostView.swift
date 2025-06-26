@@ -71,6 +71,9 @@ struct NewPostView: View {
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundColor(.secondary)
                             .padding(.top, 4)
+                            .onTapGesture {
+                                withAnimation { collapsed = false }
+                            }
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
@@ -125,7 +128,11 @@ struct NewPostView: View {
                 .coordinateSpace(name: "scroll")
                 .background(Color(.systemGray6))
                 .onPreferenceChange(OffsetKey.self) { y in
-                    withAnimation { collapsed = y < -40 }
+                    if y < -20 && !collapsed {
+                        withAnimation { collapsed = true }
+                    } else if y > 0 && collapsed {
+                        withAnimation { collapsed = false }
+                    }
                 }
             }
             .navigationTitle("New Post")
