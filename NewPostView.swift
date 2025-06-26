@@ -30,7 +30,8 @@ struct NewPostView: View {
     @StateObject private var locationManager = LocationManager.shared
 
     // Grid
-    private let cols = Array(repeating: GridItem(.flexible(), spacing: 1), count: 3)
+    private var sep: CGFloat { 1 / UIScreen.main.scale }
+    private var cols: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: sep), count: 3) }
 
     @Environment(\.dismiss) private var dismiss
 
@@ -64,6 +65,14 @@ struct NewPostView: View {
                 .frame(height: collapsed ? 0 : 300)
                 .clipped()
                 .cornerRadius(12)
+                .overlay(alignment: .top) {
+                    if collapsed && preview != nil {
+                        Image(systemName: "chevron.compact.up")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
                 .overlay(alignment: .bottomTrailing) {
                     if preview != nil {
                         Button(action: { showCropper = true }) {
@@ -90,7 +99,7 @@ struct NewPostView: View {
                     }
                     .frame(height: 0)
 
-                    LazyVGrid(columns: cols, spacing: 2) {
+                    LazyVGrid(columns: cols, spacing: sep) {
                         ForEach(assets, id: \.localIdentifier) { asset in
                             Thumb(asset: asset,
                                   manager: manager,
@@ -175,7 +184,10 @@ fileprivate struct Thumb: View {
     let onTap: () -> Void
 
     @State private var img: UIImage?
-    private var side: CGFloat { (UIScreen.main.bounds.width - 2) / 3 }
+    private var side: CGFloat {
+        let sep = 1 / UIScreen.main.scale
+        return (UIScreen.main.bounds.width - sep * 2) / 3
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -199,7 +211,7 @@ fileprivate struct Thumb: View {
         .cornerRadius(4)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(Color(.systemGray4).opacity(0.5), lineWidth: 0.5)
+                .stroke(Color(.systemGray4).opacity(0.5), lineWidth: 1 / UIScreen.main.scale)
         )
         .onAppear(perform: loadThumb)
         .onTapGesture { onTap() }
