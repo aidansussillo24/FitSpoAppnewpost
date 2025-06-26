@@ -44,6 +44,8 @@ struct NewPostView: View {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
+<<<<<<< 8g50au-codex/fix-image-cropping-button-placement
+=======
                             .overlay(alignment: .bottomTrailing) {
                                 Button(action: { showCropper = true }) {
                                     Image(systemName: "crop")
@@ -55,6 +57,7 @@ struct NewPostView: View {
                                         .padding(6)
                                 }
                             }
+>>>>>>> main
                     } else {
                         Image(systemName: "photo")
                             .font(.system(size: 48))
@@ -64,6 +67,19 @@ struct NewPostView: View {
                 .frame(height: collapsed ? 0 : 300)
                 .clipped()
                 .cornerRadius(12)
+                .overlay(alignment: .bottomTrailing) {
+                    if preview != nil {
+                        Button(action: { showCropper = true }) {
+                            Image(systemName: "crop")
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(6)
+                                .background(Color.black.opacity(0.6))
+                                .foregroundColor(.white)
+                                .clipShape(Circle())
+                                .padding(6)
+                        }
+                    }
+                }
                 .animation(.easeInOut(duration: 0.25), value: collapsed)
                 .padding(.horizontal)
                 .padding(.top, 8)
