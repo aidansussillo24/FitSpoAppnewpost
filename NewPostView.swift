@@ -22,6 +22,7 @@ struct NewPostView: View {
     // Selection
     @State private var selected : PHAsset?
     @State private var preview  : UIImage?
+    @State private var showCropper = false
     @State private var collapsed = false
     @State private var showCaption = false
 
@@ -43,6 +44,7 @@ struct NewPostView: View {
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
+                            .onTapGesture { showCropper = true }
                     } else {
                         Image(systemName: "photo")
                             .font(.system(size: 48))
@@ -65,7 +67,7 @@ struct NewPostView: View {
                     }
                     .frame(height: 0)
 
-                    LazyVGrid(columns: cols, spacing: 1) {
+                    LazyVGrid(columns: cols, spacing: 2) {
                         ForEach(assets, id: \.localIdentifier) { asset in
                             Thumb(asset: asset,
                                   manager: manager,
@@ -75,6 +77,7 @@ struct NewPostView: View {
                         }
                     }
                 }
+                .background(Color(.systemGray6))
                 .coordinateSpace(name: "scroll")
                 .onPreferenceChange(OffsetKey.self) { y in
                     withAnimation { collapsed = y < -40 }
@@ -99,6 +102,13 @@ struct NewPostView: View {
                     }
                 } label: { EmptyView() }.hidden()
             )
+            .sheet(isPresented: $showCropper) {
+                if let img = preview {
+                    ImageCropperView(image: img) { cropped in
+                        preview = cropped
+                    }
+                }
+            }
             .task(loadAssets)
         }
     }
@@ -163,8 +173,10 @@ fileprivate struct Thumb: View {
                     .padding(4)
             }
         }
+        .cornerRadius(4)
         .overlay(
-            Rectangle().stroke(Color(.systemGray4), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color(.systemGray4).opacity(0.5), lineWidth: 0.5)
         )
         .onAppear(perform: loadThumb)
         .onTapGesture { onTap() }
