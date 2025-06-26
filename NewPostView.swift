@@ -90,6 +90,15 @@ struct NewPostView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
 
+                // -------- Library label -----
+                HStack {
+                    Text("Photo Library")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+
                 // -------- Grid -------------
                 ScrollView {
                     GeometryReader { geo in
@@ -110,12 +119,12 @@ struct NewPostView: View {
                     }
                 }
                 .background(Color(.systemGray6))
-                .coordinateSpace(name: "scroll")
                 .onPreferenceChange(OffsetKey.self) { y in
                     withAnimation { collapsed = y < -40 }
                 }
             }
             .navigationTitle("New Post")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -142,6 +151,7 @@ struct NewPostView: View {
                 }
             }
             .task(loadAssets)
+            .coordinateSpace(name: "scroll")
         }
     }
 
