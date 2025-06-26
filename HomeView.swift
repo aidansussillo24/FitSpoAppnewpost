@@ -57,6 +57,9 @@ struct HomeView: View {
             }
             .refreshable { await refresh() }
             .onAppear(perform: initialLoad)
+            .onReceive(NotificationCenter.default.publisher(for: .didUploadPost)) { _ in
+                Task { await refresh() }
+            }
             .navigationBarHidden(true)
         }
     }
