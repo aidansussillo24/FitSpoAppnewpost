@@ -98,6 +98,10 @@ struct NewPostView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 6)
+                .frame(height: collapsed ? 0 : nil)
+                .clipped()
+                .opacity(collapsed ? 0 : 1)
+                .animation(.easeInOut(duration: 0.25), value: collapsed)
 
                 // -------- Grid -------------
                 ScrollView {
@@ -118,6 +122,7 @@ struct NewPostView: View {
                         }
                     }
                 }
+                .coordinateSpace(name: "scroll")
                 .background(Color(.systemGray6))
                 .onPreferenceChange(OffsetKey.self) { y in
                     withAnimation { collapsed = y < -40 }
@@ -151,7 +156,6 @@ struct NewPostView: View {
                 }
             }
             .task(loadAssets)
-            .coordinateSpace(name: "scroll")
         }
     }
 
