@@ -1,6 +1,6 @@
 # FitSpoAppnewpost
 
-![IMG_6193](https://github.com/user-attachments/assets/1eb9d289-43ee-4d4e-ae6b-85b524587120)
+
 
 
 
