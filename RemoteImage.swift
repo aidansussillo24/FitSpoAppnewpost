@@ -64,7 +64,6 @@ private extension RemoteImage {
 
         private let urlString: String
         private var attempts  = 0
-        private let maxAttempts = 3
 
         init(urlString: String) { self.urlString = urlString }
 
@@ -106,12 +105,11 @@ private extension RemoteImage {
         }
 
         private func handleFailure() {
-            guard attempts < maxAttempts else {
-                phase = .failure
-                return
-            }
-            // exponential back‑off (1 s, 2 s, 4 s)
-            let delay = pow(2.0, Double(attempts - 1))
+            // exponential back‑off with a max delay of 60s
+            let expDelay = pow(2.0, Double(attempts - 1))
+            let delay    = min(expDelay, 60)
+
+            // show spinner again while retrying
             phase = .empty
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 self.load()
