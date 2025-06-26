@@ -125,7 +125,6 @@ struct NewPostView: View {
                         }
                     }
                 }
-                .coordinateSpace(name: "scroll")
                 .background(Color(.systemGray6))
                 .onPreferenceChange(OffsetKey.self) { y in
                     if y < -20 && !collapsed {
@@ -163,6 +162,7 @@ struct NewPostView: View {
                 }
             }
             .task(loadAssets)
+            .coordinateSpace(name: "scroll")
         }
     }
 
