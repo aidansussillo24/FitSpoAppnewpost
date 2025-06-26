@@ -92,7 +92,11 @@ struct NewPostView: View {
             }
             .background(
                 NavigationLink(isActive: $showCaption) {
-                    if let img = preview { PostCaptionView(image: img) }
+                    if let img = preview {
+                        PostCaptionView(image: img) {
+                            dismiss()
+                        }
+                    }
                 } label: { EmptyView() }.hidden()
             )
             .task(loadAssets)
