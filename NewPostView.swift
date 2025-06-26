@@ -41,21 +41,9 @@ struct NewPostView: View {
                 // -------- Preview ----------
                 Group {
                     if let img = preview {
-                        ZStack(alignment: .bottomTrailing) {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-
-                            Button(action: { showCropper = true }) {
-                                Image(systemName: "crop")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .padding(6)
-                                    .background(Color.black.opacity(0.6))
-                                    .foregroundColor(.white)
-                                    .clipShape(Circle())
-                                    .padding(6)
-                            }
-                        }
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
                     } else {
                         Image(systemName: "photo")
                             .font(.system(size: 48))
@@ -65,6 +53,19 @@ struct NewPostView: View {
                 .frame(height: collapsed ? 0 : 300)
                 .clipped()
                 .cornerRadius(12)
+                .overlay(alignment: .bottomTrailing) {
+                    if preview != nil {
+                        Button(action: { showCropper = true }) {
+                            Image(systemName: "crop")
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(6)
+                                .background(Color.black.opacity(0.6))
+                                .foregroundColor(.white)
+                                .clipShape(Circle())
+                                .padding(6)
+                        }
+                    }
+                }
                 .animation(.easeInOut(duration: 0.25), value: collapsed)
                 .padding(.horizontal)
                 .padding(.top, 8)
