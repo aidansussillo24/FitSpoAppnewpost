@@ -41,21 +41,20 @@ struct NewPostView: View {
                 // -------- Preview ----------
                 Group {
                     if let img = preview {
-                        ZStack(alignment: .bottomTrailing) {
-                            Image(uiImage: img)
-                                .resizable()
-                                .scaledToFill()
-
-                            Button(action: { showCropper = true }) {
-                                Image(systemName: "crop")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .padding(6)
-                                    .background(Color.black.opacity(0.6))
-                                    .foregroundColor(.white)
-                                    .clipShape(Circle())
-                                    .padding(6)
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .overlay(alignment: .bottomTrailing) {
+                                Button(action: { showCropper = true }) {
+                                    Image(systemName: "crop")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .padding(6)
+                                        .background(Color.black.opacity(0.6))
+                                        .foregroundColor(.white)
+                                        .clipShape(Circle())
+                                        .padding(6)
+                                }
                             }
-                        }
                     } else {
                         Image(systemName: "photo")
                             .font(.system(size: 48))
