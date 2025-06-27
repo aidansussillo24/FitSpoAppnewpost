@@ -38,6 +38,9 @@ struct PostCardView: View {
                             .fontWeight(.semibold)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
+
+                            .layoutPriority(1)
+
                     }
                 }
                 .buttonStyle(.plain)
@@ -49,6 +52,7 @@ struct PostCardView: View {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                         Text("\(post.likes)")
                     }
+                    .frame(width: 40)
                 }
                 .buttonStyle(.plain)
             }
@@ -57,8 +61,8 @@ struct PostCardView: View {
         }
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05),
-                radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.1),
+                radius: 1, x: 0, y: 1)
         .overlay(alignment: .topTrailing) { weatherIconView }
         .onAppear(perform: fetchAuthor)
     }

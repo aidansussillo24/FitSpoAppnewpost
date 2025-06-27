@@ -52,6 +52,7 @@ struct HomeView: View {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .padding(.vertical, 32)
+                            .padding(.top, 16)
                     }
                 }
             }
@@ -77,7 +78,7 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 16)
+        .padding(.top, 24)
         .padding(.bottom, 8)
     }
 
