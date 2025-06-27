@@ -21,9 +21,14 @@ struct PostCardView: View {
 
             // ── Tap image → PostDetail ─────────────────────────────
             NavigationLink(destination: PostDetailView(post: post)) {
-                RemoteImage(url: post.imageURL, contentMode: .fit)
+                GeometryReader { geo in
+                    RemoteImage(url: post.imageURL, contentMode: .fill)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
+                .aspectRatio(4/5, contentMode: .fill)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(FadeOnPressStyle())
 
             // ── Footer (avatar, name, like button) ─────────────────
             HStack(spacing: 8) {
@@ -34,8 +39,9 @@ struct PostCardView: View {
                         Text(isLoadingAuthor ? "Loading…" : authorName)
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .layoutPriority(1)
                     }
                 }
                 .buttonStyle(.plain)
@@ -43,10 +49,11 @@ struct PostCardView: View {
                 Spacer()
 
                 Button(action: onLike) {
-                    HStack(spacing: 4) {
+                    HStack(alignment: .center, spacing: 4) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                         Text("\(post.likes)")
                     }
+                    .frame(width: 40)
                 }
                 .buttonStyle(.plain)
             }
@@ -55,8 +62,8 @@ struct PostCardView: View {
         }
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05),
-                radius: 4, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.1),
+                radius: 1, x: 0, y: 1)
         .overlay(alignment: .topTrailing) { weatherIconView }
         .onAppear(perform: fetchAuthor)
     }
@@ -101,7 +108,11 @@ struct PostCardView: View {
                 }
             }
             .padding(6)
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .shadow(color: Color.black.opacity(0.15), radius: 2, x: 0, y: 1)
             .padding(8)
         }
     }
@@ -119,6 +130,17 @@ struct PostCardView: View {
                 authorName      = d["displayName"] as? String ?? "Unknown"
                 authorAvatarURL = d["avatarURL"]   as? String ?? ""
             }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: Press feedback helper
+// ─────────────────────────────────────────────────────────────
+struct FadeOnPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.easeInOut(duration: 0.06), value: configuration.isPressed)
     }
 }
 
