@@ -29,6 +29,7 @@ struct HomeView: View {
     // Split into two columns
     private var leftColumn:  [Post] { posts.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element) }
     private var rightColumn: [Post] { posts.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element) }
+    private var todaysFits: [Post] { Array(posts.prefix(8)) }
 
     @State private var hotPosts: [Post] = []
 
@@ -37,7 +38,6 @@ struct HomeView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     header
-
                     if !hotPosts.isEmpty {
                         NavigationLink(destination: HotPostsView()) {
                             VStack(alignment: .leading, spacing: 8) {
@@ -57,6 +57,20 @@ struct HomeView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                    if !todaysFits.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(todaysFits) { post in
+                                    NavigationLink(destination: PostDetailView(post: post)) {
+                                        RemoteImage(url: post.imageURL, contentMode: .fill)
+                                            .frame(width: 70, height: 70)
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                        }
                     }
 
                     // ── Masonry grid
