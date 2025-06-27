@@ -15,6 +15,17 @@ struct PostCardView: View {
     @State private var authorName      = ""
     @State private var authorAvatarURL = ""
     @State private var isLoadingAuthor = true
+    @State private var showHeart       = false
+
+    @Environment(\.openURL) private var openURL
+
+    private var forecastURL: URL? {
+        guard let lat = post.latitude,
+              let lon = post.longitude
+        else { return nil }
+        let urlString = "https://weather.com/weather/today/l/\(lat),\(lon)"
+        return URL(string: urlString)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +35,10 @@ struct PostCardView: View {
                 RemoteImage(url: post.imageURL, contentMode: .fill)
                     .aspectRatio(4/5, contentMode: .fill)
                     .clipped()
+                    .highPriorityGesture(
+                        TapGesture(count: 2).onEnded { handleDoubleTapLike() }
+                    )
+                    .overlay(HeartBurstView(trigger: $showHeart))
             }
             .buttonStyle(.plain)
 
@@ -113,6 +128,7 @@ struct PostCardView: View {
             )
             .shadow(color: Color.black.opacity(0.15), radius: 2, x: 0, y: 1)
             .padding(8)
+            .onTapGesture { if let url = forecastURL { openURL(url) } }
         }
     }
 
@@ -129,6 +145,13 @@ struct PostCardView: View {
                 authorName      = d["displayName"] as? String ?? "Unknown"
                 authorAvatarURL = d["avatarURL"]   as? String ?? ""
             }
+    }
+
+    private func handleDoubleTapLike() {
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        showHeart = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showHeart = false }
+        if !post.isLiked { onLike() }
     }
 }
 
