@@ -30,12 +30,28 @@ struct HomeView: View {
     private var rightColumn: [Post] { posts.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element) }
 
     @State private var hotPosts: [Post] = []
-
+    @State private var isLoadingHot = false
     var body: some View {
         NavigationView {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     header
+
+                    NavigationLink(destination: HotPostsView()) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Hot Today \u{1F525}")
+                                .font(.headline)
+                                .padding(.horizontal, 12)
+                            if isLoadingHot {
+                                ProgressView()
+                                    .frame(height: 70)
+                                    .frame(maxWidth: .infinity)
+                            } else if hotPosts.isEmpty {
+                                Text("No hot posts yet")
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 12)
+                            } else {
 
                     if !hotPosts.isEmpty {
                         NavigationLink(destination: HotPostsView()) {
@@ -55,6 +71,9 @@ struct HomeView: View {
                                 }
                             }
                         }
+                    }
+                    .buttonStyle(.plain)
+
                         .buttonStyle(.plain)
                     }
 
@@ -262,6 +281,10 @@ struct HomeView: View {
 
     // MARK: hot posts
     private func loadHotPosts() {
+        isLoadingHot = true
+        NetworkService.shared.fetchHotPosts(limit: 10) { result in
+            DispatchQueue.main.async {
+                isLoadingHot = false
         NetworkService.shared.fetchHotPosts(limit: 10) { result in
             DispatchQueue.main.async {
                 switch result {
