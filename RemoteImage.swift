@@ -52,7 +52,7 @@ struct RemoteImage: View {
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
                     .transition(.opacity)
-            
+
             case .failure:
                 ZStack {
                     Color.gray.opacity(0.15)
@@ -88,7 +88,7 @@ private extension RemoteImage {
             guard case .empty = phase,
                   let url = URL(string: urlString) else { return }
 
-            // 1️⃣ check URLCache
+            // 1️⃣ check URLCache
             if let cached = URLCache.shared.cachedResponse(for: URLRequest(url: url)),
                let img     = UIImage(data: cached.data) {
                 phase = .success(img)
