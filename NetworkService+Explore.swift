@@ -99,4 +99,77 @@ extension NetworkService {
         completion(.success(.init(posts: posts,
                                   lastDoc: snap.documents.last)))
     }
+
+    // MARK: - Hot Posts
+    func fetchHotPosts(limit: Int = 10,
+                       completion: @escaping (Result<[Post],Error>) -> Void) {
+        let since = Date().addingTimeInterval(-12 * 60 * 60)
+        let t = Timestamp(date: since)
+        db.collection("posts")
+            .whereField("timestamp", isGreaterThan: t)
+            .order(by: "likes", descending: true)
+            .order(by: "timestamp", descending: true)
+            .limit(to: limit * 2)
+            .getDocuments { [weak self] snap, err in
+                self?.mapSnapshot(snapshot: snap, error: err) { result in
+                    switch result {
+                    case .success(let bundle):
+                        var unique: [Post] = []
+                        var seen: Set<String> = []
+                        for p in bundle.posts {
+                            if !seen.contains(p.userId) {
+                                unique.append(p)
+                                seen.insert(p.userId)
+                            }
+                            if unique.count >= limit { break }
+                        }
+                        completion(.success(unique))
+                    case .failure(let e): completion(.failure(e))
+                    }
+                }
+            }
+    }
+
+    func fetchHotPostsPage(
+        startAfter last: DocumentSnapshot?,
+        limit: Int = 20,
+        completion: @escaping (Result<TrendingBundle,Error>) -> Void
+    ) {
+        let since = Date().addingTimeInterval(-12 * 60 * 60)
+        let t = Timestamp(date: since)
+
+        let needsFallback = (last?.data()?["likes"] == nil)
+
+        var q: Query = db.collection("posts")
+            .whereField("timestamp", isGreaterThan: t)
+
+        if needsFallback {
+            q = q.order(by: "timestamp", descending: true)
+        } else {
+            q = q.order(by: "likes", descending: true)
+                 .order(by: "timestamp", descending: true)
+        }
+
+        q = q.limit(to: limit)
+        if let last { q = q.start(afterDocument: last) }
+
+        q.getDocuments { [weak self] snap, err in
+            self?.mapSnapshot(snapshot: snap, error: err) { result in
+                switch result {
+                case .success(let bundle):
+                    var unique: [Post] = []
+                    var seen: Set<String> = []
+                    for p in bundle.posts {
+                        if !seen.contains(p.userId) {
+                            unique.append(p)
+                            seen.insert(p.userId)
+                        }
+                    }
+                    completion(.success(.init(posts: unique,
+                                              lastDoc: bundle.lastDoc)))
+                case .failure(let err): completion(.failure(err))
+                }
+            }
+        }
+    }
 }

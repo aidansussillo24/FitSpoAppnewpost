@@ -29,7 +29,8 @@ struct HomeView: View {
     // Split into two columns
     private var leftColumn:  [Post] { posts.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element) }
     private var rightColumn: [Post] { posts.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element) }
-    private var todaysFits: [Post] { Array(posts.prefix(8)) }
+
+    @State private var hotPosts: [Post] = []
 
     var body: some View {
         NavigationView {
@@ -37,20 +38,25 @@ struct HomeView: View {
                 VStack(spacing: 16) {
                     header
 
-                    if !todaysFits.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(todaysFits) { post in
-                                    NavigationLink(destination: PostDetailView(post: post)) {
-                                        RemoteImage(url: post.imageURL, contentMode: .fill)
-                                            .frame(width: 70, height: 70)
-                                            .clipShape(Circle())
+                    if !hotPosts.isEmpty {
+                        NavigationLink(destination: HotPostsView()) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Hot Today \u{1F525}")
+                                    .font(.headline)
+                                    .padding(.horizontal, 12)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(hotPosts) { post in
+                                            RemoteImage(url: post.imageURL, contentMode: .fill)
+                                                .frame(width: 70, height: 70)
+                                                .clipShape(Circle())
+                                        }
                                     }
-                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 12)
                                 }
                             }
-                            .padding(.horizontal, 12)
                         }
+                        .buttonStyle(.plain)
                     }
 
                     // ── Masonry grid
@@ -79,7 +85,10 @@ struct HomeView: View {
                 }
             }
             .refreshable { await refresh() }
-            .onAppear(perform: initialLoad)
+            .onAppear {
+                initialLoad()
+                loadHotPosts()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .didUploadPost)) { _ in
                 Task { await refresh() }
             }
@@ -158,6 +167,7 @@ struct HomeView: View {
                     cursor     = tuple.1
                     reachedEnd = tuple.1 == nil
                     isLoadingPage = false
+                    loadHotPosts()
                     // Fetch rest of first page in background
                     if !reachedEnd {
                         loadAdditionalForFirstPage()
@@ -229,6 +239,7 @@ struct HomeView: View {
                         cursor     = tuple.1
                         reachedEnd = tuple.1 == nil
                         lastPrefetchIndex = -1          // reset for fresh paging
+                        loadHotPosts()
                     case .failure(let err):
                         print("Refresh error:", err)
                     }
@@ -245,6 +256,20 @@ struct HomeView: View {
                 if case .success(let updated) = result,
                    let idx = posts.firstIndex(where: { $0.id == updated.id }) {
                     posts[idx] = updated
+                }
+            }
+        }
+    }
+
+    // MARK: hot posts
+    private func loadHotPosts() {
+        NetworkService.shared.fetchHotPosts(limit: 10) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let posts): hotPosts = posts
+                case .failure(let err):
+                    hotPosts = []
+                    print("Hot posts error:", err.localizedDescription)
                 }
             }
         }
