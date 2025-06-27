@@ -26,6 +26,9 @@ struct HomeView: View {
     private let PREFETCH_AHEAD = 4            // when ≤4 remain → fetch
     @State private var lastPrefetchIndex = -1 // prevents duplicate calls
 
+    // Hot posts row
+    @State private var hotPosts: [Post] = []
+
     // Split into two columns
     private var leftColumn:  [Post] { posts.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element) }
     private var rightColumn: [Post] { posts.enumerated().filter { !$0.offset.isMultiple(of: 2) }.map(\.element) }
@@ -35,6 +38,7 @@ struct HomeView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     header
+                    hotCircleRow
 
                     // ── Masonry grid
                     if posts.isEmpty && isLoadingPage {
@@ -63,6 +67,7 @@ struct HomeView: View {
             }
             .refreshable { await refresh() }
             .onAppear(perform: initialLoad)
+            .task { await loadHotPosts() }
             .onReceive(NotificationCenter.default.publisher(for: .didUploadPost)) { _ in
                 Task { await refresh() }
             }
@@ -85,6 +90,39 @@ struct HomeView: View {
         .padding(.horizontal, 16)
         .padding(.top, 24)
         .padding(.bottom, 8)
+    }
+
+    // MARK: hot row
+    private var hotCircleRow: some View {
+        Group {
+            if !hotPosts.isEmpty {
+                NavigationLink {
+                    HotPostsView()
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .foregroundColor(.red)
+                            Text("Hot Today")
+                                .font(.headline)
+                        }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(hotPosts) { post in
+                                    RemoteImage(url: post.imageURL)
+                                        .frame(width: 64, height: 64)
+                                        .clipShape(Circle())
+                                }
+                            }
+                            .padding(.horizontal, 6)
+                        }
+                        .frame(height: 72)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+            }
+        }
     }
 
     // MARK: skeleton grid
@@ -230,6 +268,16 @@ struct HomeView: View {
                     posts[idx] = updated
                 }
             }
+        }
+    }
+
+    // MARK: load hot posts
+    private func loadHotPosts() async {
+        do {
+            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: nil)
+            await MainActor.run { hotPosts = bundle.posts }
+        } catch {
+            print("Hot posts error:", error.localizedDescription)
         }
     }
 }
