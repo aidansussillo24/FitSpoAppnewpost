@@ -22,12 +22,12 @@ extension NetworkService {
     // MARK: – closure API
     func fetchHotPostsPage(startAfter last: DocumentSnapshot?,
                            completion: @escaping (Result<HotPostsBundle, Error>) -> Void) {
-        let twelveHoursAgo = Date().addingTimeInterval(-12 * 60 * 60)
+        let startOfToday = Calendar.current.startOfDay(for: Date())
         var q: Query = db.collection("posts")
-            .whereField("timestamp", isGreaterThan: Timestamp(date: twelveHoursAgo))
+            .whereField("timestamp", isGreaterThan: Timestamp(date: startOfToday))
             .order(by: "timestamp", descending: true)
             .order(by: "likes", descending: true)
-            .limit(to: 50)
+            .limit(to: 100)
         if let last { q = q.start(afterDocument: last) }
         q.getDocuments { [weak self] snap, err in
             self?.mapHotSnapshot(snapshot: snap, error: err, completion: completion)
