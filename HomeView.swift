@@ -6,7 +6,6 @@
 //  Updated 2025‑06‑26:
 //  • Switched column stacks to LazyVStack so off‑screen cards are not built.
 //  • Added lastPrefetchIndex guard to avoid duplicate triggers.
-//
 
 import SwiftUI
 import FirebaseFirestore
@@ -32,7 +31,6 @@ struct HomeView: View {
 
     @State private var hotPosts: [Post] = []
     @State private var isLoadingHot = false
-
     var body: some View {
         NavigationView {
             ScrollView(showsIndicators: false) {
@@ -54,6 +52,13 @@ struct HomeView: View {
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 12)
                             } else {
+
+                    if !hotPosts.isEmpty {
+                        NavigationLink(destination: HotPostsView()) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Hot Today \u{1F525}")
+                                    .font(.headline)
+                                    .padding(.horizontal, 12)
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 12) {
                                         ForEach(hotPosts) { post in
@@ -68,6 +73,9 @@ struct HomeView: View {
                         }
                     }
                     .buttonStyle(.plain)
+
+                        .buttonStyle(.plain)
+                    }
 
                     // ── Masonry grid
                     if posts.isEmpty && isLoadingPage {
@@ -277,6 +285,8 @@ struct HomeView: View {
         NetworkService.shared.fetchHotPosts(limit: 10) { result in
             DispatchQueue.main.async {
                 isLoadingHot = false
+        NetworkService.shared.fetchHotPosts(limit: 10) { result in
+            DispatchQueue.main.async {
                 switch result {
                 case .success(let posts): hotPosts = posts
                 case .failure(let err):
