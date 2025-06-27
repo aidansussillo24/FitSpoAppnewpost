@@ -10,8 +10,22 @@ import UIKit       // UIImage
 
 struct RemoteImage: View {
 
-    enum Phase {
-        case empty, success(UIImage), failure
+    enum Phase: Equatable {
+        case empty
+        case success(UIImage)
+        case failure
+
+        static func == (lhs: Phase, rhs: Phase) -> Bool {
+            switch (lhs, rhs) {
+            case (.empty, .empty), (.failure, .failure):
+                return true
+            case (.success, .success):
+                // consider any success state equal; the image itself isn't compared
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     @StateObject private var loader: Loader
