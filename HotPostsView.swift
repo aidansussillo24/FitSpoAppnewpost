@@ -73,4 +73,3 @@ private struct ImageTile: View {
         .aspectRatio(1, contentMode: .fit)
     }
 }
-
