@@ -21,7 +21,9 @@ struct PostCardView: View {
 
             // ── Tap image → PostDetail ─────────────────────────────
             NavigationLink(destination: PostDetailView(post: post)) {
-                RemoteImage(url: post.imageURL, contentMode: .fit)
+                RemoteImage(url: post.imageURL, contentMode: .fill)
+                    .aspectRatio(4/5, contentMode: .fill)
+                    .clipped()
             }
             .buttonStyle(.plain)
 
@@ -34,8 +36,8 @@ struct PostCardView: View {
                         Text(isLoadingAuthor ? "Loading…" : authorName)
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
                     }
                 }
                 .buttonStyle(.plain)
@@ -43,7 +45,7 @@ struct PostCardView: View {
                 Spacer()
 
                 Button(action: onLike) {
-                    HStack(spacing: 4) {
+                    HStack(alignment: .center, spacing: 4) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                         Text("\(post.likes)")
                     }
@@ -101,7 +103,11 @@ struct PostCardView: View {
                 }
             }
             .padding(6)
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .shadow(color: Color.black.opacity(0.15), radius: 2, x: 0, y: 1)
             .padding(8)
         }
     }
