@@ -37,7 +37,8 @@ struct RemoteImage: View {
                 Image(uiImage: img)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
-
+                    .transition(.opacity)
+            
             case .failure:
                 ZStack {
                     Color.gray.opacity(0.15)
@@ -49,6 +50,7 @@ struct RemoteImage: View {
             }
         }
         .onAppear { loader.load() }
+        .animation(.easeInOut(duration: 0.25), value: loader.phase)
     }
 }
 
