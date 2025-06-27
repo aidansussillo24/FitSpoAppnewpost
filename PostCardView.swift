@@ -38,7 +38,9 @@ struct PostCardView: View {
                             .fontWeight(.semibold)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
+
                             .layoutPriority(1)
+
                     }
                 }
                 .buttonStyle(.plain)
