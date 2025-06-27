@@ -40,7 +40,7 @@ struct HomeView: View {
                         column(for: leftColumn)
                         column(for: rightColumn)
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
 
                     if isLoadingPage {
                         ProgressView()
