@@ -21,7 +21,8 @@ struct HomeView: View {
     @State private var isLoadingPage = false
     @State private var isRefreshing  = false
 
-    private let PAGE_SIZE      = 12           // first load ≈10‑15 posts
+    private let PAGE_SIZE      = 12           // full page size
+    private let FIRST_BATCH    = 4            // show first two rows fast
     private let PREFETCH_AHEAD = 4            // when ≤4 remain → fetch
     @State private var lastPrefetchIndex = -1 // prevents duplicate calls
 
@@ -36,13 +37,17 @@ struct HomeView: View {
                     header
 
                     // ── Masonry grid
-                    HStack(alignment: .top, spacing: 8) {
-                        column(for: leftColumn)
-                        column(for: rightColumn)
+                    if posts.isEmpty && isLoadingPage {
+                        skeletonGrid
+                    } else {
+                        HStack(alignment: .top, spacing: 8) {
+                            column(for: leftColumn)
+                            column(for: rightColumn)
+                        }
+                        .padding(.horizontal, 12)
                     }
-                    .padding(.horizontal, 12)
 
-                    if isLoadingPage {
+                    if isLoadingPage && !posts.isEmpty {
                         ProgressView()
                             .padding(.vertical, 32)
                     }
@@ -82,6 +87,23 @@ struct HomeView: View {
         .padding(.bottom, 8)
     }
 
+    // MARK: skeleton grid
+    private var skeletonGrid: some View {
+        HStack(alignment: .top, spacing: 8) {
+            LazyVStack(spacing: 8) {
+                ForEach(0..<3, id: \.self) { _ in
+                    PostCardSkeleton()
+                }
+            }
+            LazyVStack(spacing: 8) {
+                ForEach(0..<3, id: \.self) { _ in
+                    PostCardSkeleton()
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+
     // MARK: masonry column
     @ViewBuilder
     private func column(for list: [Post]) -> some View {
@@ -111,15 +133,20 @@ struct HomeView: View {
     private func initialLoad() {
         guard posts.isEmpty, !isLoadingPage else { return }
         isLoadingPage = true
-        NetworkService.shared.fetchPostsPage(pageSize: PAGE_SIZE, after: nil) { res in
+        NetworkService.shared.fetchPostsPage(pageSize: FIRST_BATCH, after: nil) { res in
             DispatchQueue.main.async {
-                isLoadingPage = false
                 switch res {
                 case .success(let tuple):
                     posts      = tuple.0
                     cursor     = tuple.1
                     reachedEnd = tuple.1 == nil
+                    isLoadingPage = false
+                    // Fetch rest of first page in background
+                    if !reachedEnd {
+                        loadAdditionalForFirstPage()
+                    }
                 case .failure(let err):
+                    isLoadingPage = false
                     print("Initial load error:", err)
                 }
             }
@@ -143,6 +170,26 @@ struct HomeView: View {
                     reachedEnd = tuple.1 == nil
                 case .failure(let err):
                     print("Next page error:", err)
+                }
+            }
+        }
+    }
+
+    // Fetch remaining posts for first page after initial batch
+    private func loadAdditionalForFirstPage() {
+        NetworkService.shared.fetchPostsPage(pageSize: PAGE_SIZE - FIRST_BATCH,
+                                            after: cursor) { res in
+            DispatchQueue.main.async {
+                switch res {
+                case .success(let tuple):
+                    let newOnes = tuple.0.filter { p in !posts.contains(where: { $0.id == p.id }) }
+                    withAnimation(.easeIn) {
+                        posts.append(contentsOf: newOnes)
+                    }
+                    cursor     = tuple.1
+                    reachedEnd = tuple.1 == nil
+                case .failure(let err):
+                    print("Initial page extend error:", err)
                 }
             }
         }
