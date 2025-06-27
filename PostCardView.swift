@@ -21,18 +21,11 @@ struct PostCardView: View {
 
             // ── Tap image → PostDetail ─────────────────────────────
             NavigationLink(destination: PostDetailView(post: post)) {
-                GeometryReader { geo in
-                    RemoteImage(url: post.imageURL, contentMode: .fill)
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-                }
-                .aspectRatio(4/5, contentMode: .fill)
-
                 RemoteImage(url: post.imageURL, contentMode: .fill)
                     .aspectRatio(4/5, contentMode: .fill)
                     .clipped()
             }
-            .buttonStyle(FadeOnPressStyle())
+            .buttonStyle(.plain)
 
             // ── Footer (avatar, name, like button) ─────────────────
             HStack(spacing: 8) {
@@ -45,10 +38,9 @@ struct PostCardView: View {
                             .fontWeight(.semibold)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
-                            .layoutPriority(1)
-
 
                             .layoutPriority(1)
+
                     }
                 }
                 .buttonStyle(.plain)
@@ -137,17 +129,6 @@ struct PostCardView: View {
                 authorName      = d["displayName"] as? String ?? "Unknown"
                 authorAvatarURL = d["avatarURL"]   as? String ?? ""
             }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
-// MARK: Press feedback helper
-// ─────────────────────────────────────────────────────────────
-struct FadeOnPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .animation(.easeInOut(duration: 0.06), value: configuration.isPressed)
     }
 }
 
