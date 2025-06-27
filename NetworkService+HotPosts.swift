@@ -25,7 +25,6 @@ extension NetworkService {
         let twelveHoursAgo = Date().addingTimeInterval(-12 * 60 * 60)
         var q: Query = db.collection("posts")
             .whereField("timestamp", isGreaterThan: Timestamp(date: twelveHoursAgo))
-            .order(by: "likes", descending: true)
             .order(by: "timestamp", descending: true)
             .limit(to: 50)
         if let last { q = q.start(afterDocument: last) }
@@ -73,8 +72,15 @@ extension NetworkService {
             )
             hotPosts.append(post)
             seenUsers.insert(uid)
-            if hotPosts.count >= 10 { break }
         }
+        hotPosts.sort {
+            if $0.likes == $1.likes {
+                return $0.timestamp > $1.timestamp
+            } else {
+                return $0.likes > $1.likes
+            }
+        }
+        hotPosts = Array(hotPosts.prefix(10))
         completion(.success(.init(posts: hotPosts, lastDoc: snap.documents.last)))
     }
 }
