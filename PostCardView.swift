@@ -27,6 +27,10 @@ struct PostCardView: View {
                         .clipped()
                 }
                 .aspectRatio(4/5, contentMode: .fill)
+
+                RemoteImage(url: post.imageURL, contentMode: .fill)
+                    .aspectRatio(4/5, contentMode: .fill)
+                    .clipped()
             }
             .buttonStyle(FadeOnPressStyle())
 
@@ -41,6 +45,9 @@ struct PostCardView: View {
                             .fontWeight(.semibold)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
+                            .layoutPriority(1)
+
+
                             .layoutPriority(1)
                     }
                 }
