@@ -28,6 +28,7 @@ struct HomeView: View {
 
     // Hot posts row
     @State private var hotPosts: [Post] = []
+    @State private var hotRowOffset: CGFloat = -20
 
     // Split into two columns
     private var leftColumn:  [Post] { posts.enumerated().filter { $0.offset.isMultiple(of: 2) }.map(\.element) }
@@ -117,6 +118,15 @@ struct HomeView: View {
                             .padding(.horizontal, 6)
                         }
                         .frame(height: 72)
+                    }
+                    .offset(x: hotRowOffset)
+                    .onAppear {
+                        withAnimation(
+                            .easeInOut(duration: 8)
+                                .repeatForever(autoreverses: true)
+                        ) {
+                            hotRowOffset = 20
+                        }
                     }
                 }
                 .buttonStyle(.plain)
