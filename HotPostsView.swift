@@ -39,7 +39,7 @@ struct HotPostsView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: lastDoc)
+            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: lastDoc, limit: 100)
             lastDoc = bundle.lastDoc
             posts.append(contentsOf: bundle.posts)
         } catch {

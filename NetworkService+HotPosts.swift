@@ -12,22 +12,16 @@ extension NetworkService {
         let lastDoc: DocumentSnapshot?
     }
 
-    // MARK: – async API
-    func fetchHotPostsPage(startAfter last: DocumentSnapshot?) async throws -> HotPostsBundle {
-        try await withCheckedThrowingContinuation { cont in
-            fetchHotPostsPage(startAfter: last) { cont.resume(with: $0) }
-        }
-    }
-
     // MARK: – closure API
     func fetchHotPostsPage(startAfter last: DocumentSnapshot?,
+                           limit: Int = 100,
                            completion: @escaping (Result<HotPostsBundle, Error>) -> Void) {
         let startOfToday = Calendar.current.startOfDay(for: Date())
         var q: Query = db.collection("posts")
             .whereField("timestamp", isGreaterThan: Timestamp(date: startOfToday))
             .order(by: "timestamp", descending: true)
             .order(by: "likes", descending: true)
-            .limit(to: 100)
+            .limit(to: limit)
         if let last { q = q.start(afterDocument: last) }
         q.getDocuments { [weak self] snap, err in
             self?.mapHotSnapshot(snapshot: snap, error: err, completion: completion)
@@ -45,7 +39,7 @@ extension NetworkService {
         }
         let me = Auth.auth().currentUser?.uid
         var seenUsers: Set<String> = []
-        var hotPosts: [Post] = []
+        var hotPosts: [(Post, Int)] = []
         for doc in snap.documents {
             let d = doc.data()
             guard
@@ -57,6 +51,8 @@ extension NetworkService {
             else { continue }
             if seenUsers.contains(uid) { continue }
             let likedBy = d["likedBy"] as? [String] ?? []
+            let commentCount = d["commentsCount"] as? Int ?? 0
+            let shareCount   = d["sharesCount"]   as? Int ?? 0
             let post = Post(
                 id:        doc.documentID,
                 userId:    uid,
@@ -71,17 +67,17 @@ extension NetworkService {
                 weatherIcon: d["weatherIcon"] as? String,
                 hashtags:  d["hashtags"]  as? [String] ?? []
             )
-            hotPosts.append(post)
+            let rating = (likes ?? 0) + commentCount + shareCount
+            hotPosts.append((post, rating))
             seenUsers.insert(uid)
         }
-        hotPosts.sort {
-            if $0.likes == $1.likes {
-                return $0.timestamp > $1.timestamp
+        hotPosts.sort { lhs, rhs in
+            if lhs.1 == rhs.1 {
+                return lhs.0.timestamp > rhs.0.timestamp
             } else {
-                return $0.likes > $1.likes
+                return lhs.1 > rhs.1
             }
         }
-        hotPosts = Array(hotPosts.prefix(10))
-        completion(.success(.init(posts: hotPosts, lastDoc: snap.documents.last)))
+        completion(.success(.init(posts: hotPosts.map(\.0), lastDoc: snap.documents.last)))
     }
 }
