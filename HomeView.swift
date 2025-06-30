@@ -116,17 +116,17 @@ struct HomeView: View {
                                 }
                             }
                             .padding(.horizontal, 6)
+                            .offset(x: hotRowOffset)
+                            .onAppear {
+                                withAnimation(
+                                    .easeInOut(duration: 8)
+                                        .repeatForever(autoreverses: true)
+                                ) {
+                                    hotRowOffset = 20
+                                }
+                            }
                         }
                         .frame(height: 72)
-                    }
-                    .offset(x: hotRowOffset)
-                    .onAppear {
-                        withAnimation(
-                            .easeInOut(duration: 8)
-                                .repeatForever(autoreverses: true)
-                        ) {
-                            hotRowOffset = 20
-                        }
                     }
                 }
                 .buttonStyle(.plain)
@@ -284,8 +284,8 @@ struct HomeView: View {
     // MARK: load hot posts
     private func loadHotPosts() async {
         do {
-            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: nil)
-            await MainActor.run { hotPosts = bundle.posts }
+            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: nil, limit: 100)
+            await MainActor.run { hotPosts = Array(bundle.posts.prefix(10)) }
         } catch {
             print("Hot posts error:", error.localizedDescription)
         }
