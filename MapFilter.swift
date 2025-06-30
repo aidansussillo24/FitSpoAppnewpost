@@ -1,3 +1,4 @@
+
 import Foundation
 
 struct MapFilter: Equatable {
@@ -8,4 +9,3 @@ struct MapFilter: Equatable {
     var tempBand: TempBand? = nil
     var season: ExploreFilter.Season? = nil
 }
-

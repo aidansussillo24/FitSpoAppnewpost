@@ -49,4 +49,3 @@ struct MapFilterSheet: View {
         }
     }
 }
-
