@@ -12,6 +12,15 @@ extension NetworkService {
         let lastDoc: DocumentSnapshot?
     }
 
+
+    // MARK: – async API
+    func fetchHotPostsPage(startAfter last: DocumentSnapshot?,
+                           limit: Int = 100) async throws -> HotPostsBundle {
+        try await withCheckedThrowingContinuation { cont in
+            fetchHotPostsPage(startAfter: last, limit: limit) { cont.resume(with: $0) }
+        }
+    }
+
     // MARK: – closure API
     func fetchHotPostsPage(startAfter last: DocumentSnapshot?,
                            limit: Int = 100,
