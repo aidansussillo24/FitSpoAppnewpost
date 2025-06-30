@@ -12,6 +12,7 @@ extension NetworkService {
         let lastDoc: DocumentSnapshot?
     }
 
+
     // MARK: – async API
     func fetchHotPostsPage(startAfter last: DocumentSnapshot?,
                            limit: Int = 100) async throws -> HotPostsBundle {
