@@ -1,75 +1,41 @@
 import SwiftUI
 import FirebaseFirestore
 
+/// Displays the daily top posts in a simple vertical feed.
+/// Swiping through shows each post with the regular detail layout.
 struct HotPostsView: View {
-    private let spacing: CGFloat = 2
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 120), spacing: spacing)]
-    }
 
     @State private var posts: [Post] = []
-    @State private var lastDoc: DocumentSnapshot?
     @State private var isLoading = false
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: spacing) {
+            LazyVStack(spacing: 32) {
                 ForEach(posts) { post in
-                    NavigationLink { PostDetailView(post: post) } label: {
-                        ImageTile(url: post.imageURL)
-                    }
-                    .onAppear {
-                        if post.id == posts.last?.id {
-                            Task { await loadMore() }
-                        }
-                    }
+                    PostDetailView(post: post)
+                        .background(Color(UIColor.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+                        .padding(.horizontal)
                 }
             }
-            .padding(.horizontal, spacing / 2)
-            .padding(.bottom, spacing)
+            .padding(.vertical)
         }
-        .navigationTitle("Hot Posts")
-        .refreshable { await reload(clear: true) }
-        .task { await reload(clear: true) }
+        .navigationTitle("Hot Today")
+        .task { await reload() }
+        .refreshable { await reload() }
     }
 
-    private func reload(clear: Bool) async {
+    private func reload() async {
         if isLoading { return }
-        if clear { posts.removeAll(); lastDoc = nil }
         isLoading = true
         defer { isLoading = false }
         do {
-            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: lastDoc, limit: 100)
-            lastDoc = bundle.lastDoc
-            posts.append(contentsOf: bundle.posts)
+            let bundle = try await NetworkService.shared
+                .fetchHotPostsPage(startAfter: nil, limit: 10)
+            posts = bundle.posts
         } catch {
             print("HotPosts fetch error:", error.localizedDescription)
         }
-    }
-
-    private func loadMore() async {
-        await reload(clear: false)
-    }
-}
-
-// reuse from ExploreView
-private struct ImageTile: View {
-    let url: String
-    var body: some View {
-        GeometryReader { geo in
-            let side = geo.size.width
-            AsyncImage(url: URL(string: url)) { phase in
-                switch phase {
-                case .empty:   Color.gray.opacity(0.12)
-                case .success(let img): img.resizable().scaledToFill()
-                case .failure: Color.gray.opacity(0.12)
-                @unknown default: Color.gray.opacity(0.12)
-                }
-            }
-            .frame(width: side, height: side)
-            .clipped()
-            .cornerRadius(8)
-        }
-        .aspectRatio(1, contentMode: .fit)
     }
 }
