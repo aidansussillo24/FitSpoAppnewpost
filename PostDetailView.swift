@@ -19,6 +19,7 @@ struct PostDetailView: View {
 
     // ── injected
     let post: Post
+    let rank: Int?
     let navTitle: String
     @Environment(\.dismiss) private var dismiss
 
@@ -59,8 +60,9 @@ struct PostDetailView: View {
     @State private var imgRatio: CGFloat? = nil     // natural h/w
     @State private var faceTags: [UserTag] = []
 
-    init(post: Post, navTitle: String = "Post") {
+    init(post: Post, rank: Int? = nil, navTitle: String = "Post") {
         self.post = post
+        self.rank = rank
         self.navTitle = navTitle
         _isLiked     = State(initialValue: post.isLiked)
         _likesCount  = State(initialValue: post.likes)
@@ -174,6 +176,10 @@ struct PostDetailView: View {
                         }
                         .padding(16)
                     }
+                    // hot rank badge (bottom‑right corner)
+                    .overlay(alignment: .bottomTrailing) {
+                        hotBadge
+                    }
             } else {
                 Color.gray.opacity(0.2)
             }
@@ -238,6 +244,22 @@ struct PostDetailView: View {
                     y: t.yNorm * geo.size.width * ratio
                 )
             }
+        }
+    }
+
+    @ViewBuilder private var hotBadge: some View {
+        if let rank = rank {
+            ZStack {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.red)
+                Text("\(rank)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(.white)
+            }
+            .padding(12)
+            .background(.ultraThickMaterial, in: Circle())
+            .padding(16)
         }
     }
 
