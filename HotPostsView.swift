@@ -17,18 +17,34 @@ struct HotPostsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 32) {
-                ForEach(posts) { post in
-                    PostDetailView(post: post)
+                ForEach(Array(posts.enumerated()), id: \.element.id) { idx, post in
+                    PostDetailView(post: post, navTitle: "🔥 Hot Today")
                         .background(Color(UIColor.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
                         .padding(.horizontal)
+                        .overlay(alignment: .bottomTrailing) {
+                            Text("\(idx + 1)")
+                                .font(.caption2.weight(.bold))
+                                .padding(6)
+                                .background(Color.black.opacity(0.6), in: Circle())
+                                .foregroundColor(.white)
+                                .padding(8)
+                        }
                         .onAppear { maybePrefetch(after: post) }
                 }
             }
             .padding(.vertical)
         }
         .navigationTitle("Hot Today")
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill").foregroundColor(.red)
+                    Text("Hot Today")
+                }
+            }
+        }
         .task { await reload() }
         .refreshable { await reload() }
     }
