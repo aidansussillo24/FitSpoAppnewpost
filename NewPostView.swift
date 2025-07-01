@@ -225,7 +225,7 @@ fileprivate struct Thumb: View {
 
             if selected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.black)
                     .padding(4)
             }
         }

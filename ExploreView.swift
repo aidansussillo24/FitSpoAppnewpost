@@ -147,7 +147,7 @@ struct ExploreView: View {
                         .padding(.vertical, 6)
                         .padding(.horizontal, 12)
                         .background(selectedChip == chip
-                                    ? Color.blue
+                                    ? Color.black
                                     : Color(.systemGray5))
                         .foregroundColor(selectedChip == chip
                                          ? .white : .primary)
