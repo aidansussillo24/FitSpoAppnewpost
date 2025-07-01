@@ -95,10 +95,6 @@ struct PostDetailView: View {
         .animation(.easeInOut, value: showComments)
         .navigationTitle("Post")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            toolbarDeleteButton
-            toolbarMoreButton
-        }
         .alert("Delete Post?", isPresented: $showDeleteConfirm,
                actions: deleteAlertButtons)
         .overlay { if isDeleting { deletingOverlay } }
@@ -260,6 +256,19 @@ struct PostDetailView: View {
             Button { showShareSheet = true } label: {
                 Image(systemName: "paperplane").font(.title2)
             }
+            Menu {
+                if post.userId == Auth.auth().currentUser?.uid {
+                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                } else {
+                    Button(role: .destructive) { showReportSheet = true } label: {
+                        Label("Report", systemImage: "flag")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis").font(.title2)
+            }
             Spacer()
         }
         .padding(.horizontal)
@@ -359,29 +368,6 @@ struct PostDetailView: View {
         }
     }
 
-    private var toolbarDeleteButton: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            if post.userId == Auth.auth().currentUser?.uid {
-                Button("Delete", role: .destructive) { showDeleteConfirm = true }
-            }
-        }
-    }
-
-    private var toolbarMoreButton: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            if post.userId != Auth.auth().currentUser?.uid {
-                Menu {
-                    Button(role: .destructive) {
-                        showReportSheet = true
-                    } label: {
-                        Label("Report", systemImage: "flag")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-            }
-        }
-    }
 
     @ViewBuilder private func deleteAlertButtons() -> some View {
         Button("Delete", role: .destructive, action: performDelete)
