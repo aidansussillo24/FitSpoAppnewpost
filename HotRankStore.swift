@@ -44,4 +44,3 @@ final class HotRankStore: ObservableObject {
         ranks[postId]
     }
 }
-
