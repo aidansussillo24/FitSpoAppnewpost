@@ -5,6 +5,8 @@
 //  Displays one post, its pins, likes & comments.
 //  *2025-07-01*  • Hot-rank badge redesign: larger circle, gradient,
 //                 bold number overlay for better legibility.
+//  *2025-07-02*  • Auto-detect rank via HotRankStore so badge shows
+//                 on every PostDetailView, not just Hot-Posts feed.
 //
 
 import SwiftUI
@@ -58,6 +60,7 @@ struct PostDetailView: View {
     @State private var postListener: ListenerRegistration?
     @State private var imgRatio: CGFloat? = nil     // natural h/w
     @State private var faceTags: [UserTag] = []
+    @State private var dynamicRank: Int? = nil      // fetched from cache
 
     init(post: Post, rank: Int? = nil, navTitle: String = "Post") {
         self.post = post
@@ -112,6 +115,7 @@ struct PostDetailView: View {
                             isPresented: $showReportSheet)
         }
         .background { chatNavigationLink }
+        .task { await ensureHotRank() }
         .onAppear   { attachListenersAndFetch() }
         .onDisappear{ postListener?.remove() }
     }
@@ -248,7 +252,7 @@ struct PostDetailView: View {
 
     // MARK: – Hot-rank badge  (new design)
     @ViewBuilder private var hotBadge: some View {
-        if let rank = rank {
+        if let rank = rank ?? dynamicRank {
             let size: CGFloat = 36
 
             ZStack {
@@ -515,6 +519,14 @@ struct PostDetailView: View {
     private func fetchFaceTags() {
         NetworkService.shared.fetchTags(for: post.id) { res in
             if case .success(let list) = res { faceTags = list }
+        }
+    }
+
+    // Fetch Top‑100 if needed and update dynamicRank
+    private func ensureHotRank() async {
+        await HotRankStore.shared.refreshIfNeeded()
+        if let r = HotRankStore.shared.rank(for: post.id) {
+            dynamicRank = r
         }
     }
 }
