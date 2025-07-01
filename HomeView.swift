@@ -3,9 +3,10 @@
 //  FitSpo
 //
 //  Masonry feed with pull‑to‑refresh + endless scroll.
-//  Updated 2025‑06‑26:
-//  • Switched column stacks to LazyVStack so off‑screen cards are not built.
-//  • Added lastPrefetchIndex guard to avoid duplicate triggers.
+//  Updated 2025‑06‑30:
+//  • Added separate navigation targets in Hot‑Today row.
+//    – Tap 🔥 Hot Today  ➜  HotPostsView (top‑100)
+//    – Tap any avatar   ➜  PostDetailView for that post.
 //
 
 import SwiftUI
@@ -39,7 +40,7 @@ struct HomeView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     header
-                    hotCircleRow
+                    hotCircleRow                             // ← updated row
 
                     // ── Masonry grid
                     if posts.isEmpty && isLoadingPage {
@@ -93,43 +94,52 @@ struct HomeView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: hot row
+    // MARK: hot row  (NEW BEHAVIOUR)
     private var hotCircleRow: some View {
         Group {
             if !hotPosts.isEmpty {
-                NavigationLink {
-                    HotPostsView()
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
+
+                    // ── Headline: navigates to Hot‑Posts screen
+                    NavigationLink {
+                        HotPostsView()
+                    } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "flame.fill")
                                 .foregroundColor(.red)
                             Text("Hot Today")
                                 .font(.headline)
+                            Spacer(minLength: 0)
                         }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(hotPosts) { post in
+                        .contentShape(Rectangle())          // bigger tap target
+                    }
+                    .buttonStyle(.plain)
+
+                    // ── Avatars: each navigates to its own post
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(hotPosts) { post in
+                                NavigationLink {
+                                    PostDetailView(post: post)
+                                } label: {
                                     RemoteImage(url: post.imageURL)
                                         .frame(width: 64, height: 64)
                                         .clipShape(Circle())
                                 }
-                            }
-                            .padding(.horizontal, 6)
-                            .offset(x: hotRowOffset)
-                            .onAppear {
-                                withAnimation(
-                                    .easeInOut(duration: 8)
-                                        .repeatForever(autoreverses: true)
-                                ) {
-                                    hotRowOffset = 20
-                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .frame(height: 72)
+                        .padding(.horizontal, 6)
+                        .offset(x: hotRowOffset)
+                        .onAppear {
+                            withAnimation(
+                                .easeInOut(duration: 8)
+                                    .repeatForever(autoreverses: true)
+                            ) { hotRowOffset = 20 }
+                        }
                     }
+                    .frame(height: 72)
                 }
-                .buttonStyle(.plain)
                 .padding(.horizontal, 12)
             }
         }
@@ -155,7 +165,7 @@ struct HomeView: View {
     // MARK: masonry column
     @ViewBuilder
     private func column(for list: [Post]) -> some View {
-        LazyVStack(spacing: 8) {                 // ← now lazy!
+        LazyVStack(spacing: 8) {
             ForEach(list) { post in
                 PostCardView(post: post) { toggleLike(post) }
                     .onAppear { maybePrefetch(after: post) }
@@ -189,10 +199,7 @@ struct HomeView: View {
                     cursor     = tuple.1
                     reachedEnd = tuple.1 == nil
                     isLoadingPage = false
-                    // Fetch rest of first page in background
-                    if !reachedEnd {
-                        loadAdditionalForFirstPage()
-                    }
+                    if !reachedEnd { loadAdditionalForFirstPage() }
                 case .failure(let err):
                     isLoadingPage = false
                     print("Initial load error:", err)
@@ -211,9 +218,7 @@ struct HomeView: View {
                 switch res {
                 case .success(let tuple):
                     let newOnes = tuple.0.filter { p in !posts.contains(where: { $0.id == p.id }) }
-                    withAnimation(.easeIn) {
-                        posts.append(contentsOf: newOnes)
-                    }
+                    withAnimation(.easeIn) { posts.append(contentsOf: newOnes) }
                     cursor     = tuple.1
                     reachedEnd = tuple.1 == nil
                 case .failure(let err):
@@ -226,14 +231,12 @@ struct HomeView: View {
     // Fetch remaining posts for first page after initial batch
     private func loadAdditionalForFirstPage() {
         NetworkService.shared.fetchPostsPage(pageSize: PAGE_SIZE - FIRST_BATCH,
-                                            after: cursor) { res in
+                                             after: cursor) { res in
             DispatchQueue.main.async {
                 switch res {
                 case .success(let tuple):
                     let newOnes = tuple.0.filter { p in !posts.contains(where: { $0.id == p.id }) }
-                    withAnimation(.easeIn) {
-                        posts.append(contentsOf: newOnes)
-                    }
+                    withAnimation(.easeIn) { posts.append(contentsOf: newOnes) }
                     cursor     = tuple.1
                     reachedEnd = tuple.1 == nil
                 case .failure(let err):
@@ -259,7 +262,7 @@ struct HomeView: View {
                         withAnimation(.easeIn) { posts = tuple.0 }
                         cursor     = tuple.1
                         reachedEnd = tuple.1 == nil
-                        lastPrefetchIndex = -1          // reset for fresh paging
+                        lastPrefetchIndex = -1
                     case .failure(let err):
                         print("Refresh error:", err)
                     }
@@ -284,7 +287,8 @@ struct HomeView: View {
     // MARK: load hot posts
     private func loadHotPosts() async {
         do {
-            let bundle = try await NetworkService.shared.fetchHotPostsPage(startAfter: nil, limit: 100)
+            let bundle = try await NetworkService.shared
+                .fetchHotPostsPage(startAfter: nil, limit: 100)
             await MainActor.run { hotPosts = Array(bundle.posts.prefix(10)) }
         } catch {
             print("Hot posts error:", error.localizedDescription)
