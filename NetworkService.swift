@@ -124,6 +124,7 @@ final class NetworkService {
                     "timestamp"   : Timestamp(date: Date()),
                     "likes"       : 0,
                     "isLiked"     : false,
+                    "likedBy"     : [],
                     "hashtags"    : Self.extractHashtags(from: caption),
                     "scanResults" : outfitItems.map { [
                         "id"     : $0.id,
@@ -239,16 +240,31 @@ final class NetworkService {
     // ====================================================================
     func toggleLike(post: Post,
                     completion: @escaping (Result<Post,Error>) -> Void) {
-        let ref      = db.collection("posts").document(post.id)
-        let delta    = post.isLiked ? -1 : 1
-        let newLikes = post.likes + delta
-        let newLiked = !post.isLiked
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(
+                domain: "ToggleLike",
+                code: 0,
+                userInfo: [NSLocalizedDescriptionKey: "No current user"])))
+            return
+        }
 
-        ref.updateData(["likes": newLikes, "isLiked": newLiked]) { err in
+        let ref       = db.collection("posts").document(post.id)
+        let shouldLike = !post.isLiked
+        let delta      = shouldLike ? 1 : -1
+        let newLikes   = post.likes + delta
+
+        var updates: [String: Any] = ["likes": newLikes, "isLiked": shouldLike]
+        if shouldLike {
+            updates["likedBy"] = FieldValue.arrayUnion([uid])
+        } else {
+            updates["likedBy"] = FieldValue.arrayRemove([uid])
+        }
+
+        ref.updateData(updates) { err in
             if let err { completion(.failure(err)); return }
             var updated = post
             updated.likes   = newLikes
-            updated.isLiked = newLiked
+            updated.isLiked = shouldLike
             completion(.success(updated))
         }
     }
@@ -376,9 +392,12 @@ final class NetworkService {
             let imgURL  = d["imageURL"]  as? String,
             let caption = d["caption"]   as? String,
             let ts      = d["timestamp"] as? Timestamp,
-            let likes   = d["likes"]     as? Int,
-            let liked   = d["isLiked"]   as? Bool
+            let likes   = d["likes"]     as? Int
         else { return nil }
+
+        let likedBy = d["likedBy"] as? [String] ?? []
+        let me      = Auth.auth().currentUser?.uid
+        let liked    = me.map { likedBy.contains($0) } ?? (d["isLiked"] as? Bool ?? false)
 
         return Post(
             id:           doc.documentID,
