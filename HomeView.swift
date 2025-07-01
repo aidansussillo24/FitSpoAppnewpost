@@ -118,13 +118,21 @@ struct HomeView: View {
                     // ── Avatars: each navigates to its own post
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(hotPosts) { post in
+                            ForEach(Array(hotPosts.enumerated()), id: \.element.id) { idx, post in
                                 NavigationLink {
                                     PostDetailView(post: post)
                                 } label: {
                                     RemoteImage(url: post.imageURL, contentMode: .fill)
                                         .frame(width: 64, height: 64)
                                         .clipShape(Circle())
+                                        .overlay(alignment: .bottomTrailing) {
+                                            Text("\(idx + 1)")
+                                                .font(.caption2.weight(.bold))
+                                                .padding(4)
+                                                .background(Color.black.opacity(0.6), in: Circle())
+                                                .foregroundColor(.white)
+                                                .padding(2)
+                                        }
                                 }
                                 .buttonStyle(.plain)
                             }
