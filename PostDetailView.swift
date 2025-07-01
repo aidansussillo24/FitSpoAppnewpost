@@ -75,9 +75,11 @@ struct PostDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     header
                     postImage            // <──── fixed‑height now
-                    actionRow
+                    VStack(alignment: .leading, spacing: 4) {
+                        actionRow
+                        timestampRow
+                    }
                     captionRow
-                    timestampRow
                     Spacer(minLength: 32)
                 }
                 .padding(.top)
@@ -97,7 +99,6 @@ struct PostDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             toolbarDeleteButton
-            toolbarMoreButton
         }
         .alert("Delete Post?", isPresented: $showDeleteConfirm,
                actions: deleteAlertButtons)
@@ -133,6 +134,8 @@ struct PostDetailView: View {
                     Text(locationName)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
             Spacer()
@@ -244,25 +247,68 @@ struct PostDetailView: View {
 
     // MARK: action row ----------------------------------------
     private var actionRow: some View {
-        HStack(spacing: 24) {
-            Button(action: toggleLike) {
+        HStack(alignment: .top) {
+            likeButton
+            commentButton
+            shareButton
+            Spacer()
+            moreMenuButton
+        }
+        .padding(.horizontal)
+    }
+
+    private var likeButton: some View {
+        Button(action: toggleLike) {
+            VStack(spacing: 2) {
                 Image(systemName: isLiked ? "heart.fill" : "heart")
                     .font(.title2)
                     .foregroundColor(isLiked ? .red : .primary)
+                Text("\(likesCount)")
+                    .font(.caption.weight(.semibold))
             }
-            Text("\(likesCount)").font(.subheadline.bold())
-
-            Button { showComments = true } label: {
-                Image(systemName: "bubble.right").font(.title2)
-            }
-            Text("\(commentCount)").font(.subheadline.bold())
-
-            Button { showShareSheet = true } label: {
-                Image(systemName: "paperplane").font(.title2)
-            }
-            Spacer()
+            .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal)
+        .buttonStyle(.plain)
+    }
+
+    private var commentButton: some View {
+        Button { showComments = true } label: {
+            VStack(spacing: 2) {
+                Image(systemName: "bubble.right")
+                    .font(.title2)
+                Text("\(commentCount)")
+                    .font(.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var shareButton: some View {
+        Button { showShareSheet = true } label: {
+            VStack(spacing: 2) {
+                Image(systemName: "paperplane")
+                    .font(.title2)
+                Text(" ")
+                    .font(.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var moreMenuButton: some View {
+        Menu {
+            Button(role: .destructive) {
+                showReportSheet = true
+            } label: {
+                Label("Report", systemImage: "flag")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3)
+                .padding(.leading, 4)
+        }
     }
 
     // MARK: caption / time rows --------------------------------
@@ -279,8 +325,8 @@ struct PostDetailView: View {
 
     private var timestampRow: some View {
         Text(post.timestamp, style: .time)
-            .font(.caption)
-            .foregroundColor(.gray)
+            .font(.footnote)
+            .foregroundColor(.secondary)
             .padding(.horizontal)
     }
 
@@ -367,21 +413,6 @@ struct PostDetailView: View {
         }
     }
 
-    private var toolbarMoreButton: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            if post.userId != Auth.auth().currentUser?.uid {
-                Menu {
-                    Button(role: .destructive) {
-                        showReportSheet = true
-                    } label: {
-                        Label("Report", systemImage: "flag")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-            }
-        }
-    }
 
     @ViewBuilder private func deleteAlertButtons() -> some View {
         Button("Delete", role: .destructive, action: performDelete)
