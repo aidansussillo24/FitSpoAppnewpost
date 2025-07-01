@@ -122,7 +122,7 @@ struct HomeView: View {
                                 NavigationLink {
                                     PostDetailView(post: post)
                                 } label: {
-                                    RemoteImage(url: post.imageURL)
+                                    RemoteImage(url: post.imageURL, contentMode: .fill)
                                         .frame(width: 64, height: 64)
                                         .clipShape(Circle())
                                 }
