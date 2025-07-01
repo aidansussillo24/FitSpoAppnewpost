@@ -10,16 +10,16 @@ struct HotPostsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 32) {
+            LazyVStack(spacing: 16) {
                 ForEach(posts) { post in
                     PostDetailView(post: post)
                         .background(Color(UIColor.systemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
-                        .padding(.horizontal)
                 }
             }
             .padding(.vertical)
+            .padding(.horizontal, 16)
         }
         .navigationTitle("Hot Today")
         .task { await reload() }
