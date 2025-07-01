@@ -7,6 +7,12 @@ struct HotPostsView: View {
 
     @State private var posts: [Post] = []
     @State private var isLoading = false
+    @State private var lastDoc: DocumentSnapshot? = nil
+    @State private var reachedEnd = false
+    @State private var lastPrefetchIndex = -1
+
+    private let PAGE_SIZE = 10
+    private let PREFETCH_AHEAD = 4
 
     var body: some View {
         ScrollView {
@@ -17,6 +23,7 @@ struct HotPostsView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
                         .padding(.horizontal)
+                        .onAppear { maybePrefetch(after: post) }
                 }
             }
             .padding(.vertical)
@@ -32,10 +39,45 @@ struct HotPostsView: View {
         defer { isLoading = false }
         do {
             let bundle = try await NetworkService.shared
-                .fetchHotPostsPage(startAfter: nil, limit: 10)
+                .fetchHotPostsPage(startAfter: nil, limit: PAGE_SIZE)
             posts = bundle.posts
+            lastDoc = bundle.lastDoc
+            reachedEnd = bundle.lastDoc == nil
+            lastPrefetchIndex = -1
         } catch {
             print("HotPosts fetch error:", error.localizedDescription)
         }
+    }
+
+    private func loadNextPage() {
+        guard !isLoading, !reachedEnd else { return }
+        isLoading = true
+        NetworkService.shared.fetchHotPostsPage(startAfter: lastDoc,
+                                               limit: PAGE_SIZE) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let bundle):
+                    let newOnes = bundle.posts.filter { p in
+                        !posts.contains(where: { $0.id == p.id })
+                    }
+                    posts.append(contentsOf: newOnes)
+                    lastDoc = bundle.lastDoc
+                    reachedEnd = bundle.lastDoc == nil
+                case .failure(let err):
+                    print("Hot posts page error:", err)
+                }
+            }
+        }
+    }
+
+    private func maybePrefetch(after post: Post) {
+        guard let idx = posts.firstIndex(where: { $0.id == post.id }) else { return }
+        let remaining = posts.count - idx - 1
+        guard remaining <= PREFETCH_AHEAD else { return }
+
+        guard idx != lastPrefetchIndex else { return }
+        lastPrefetchIndex = idx
+        loadNextPage()
     }
 }
