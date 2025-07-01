@@ -19,6 +19,7 @@ struct PostDetailView: View {
 
     // ── injected
     let post: Post
+    let navTitle: String
     @Environment(\.dismiss) private var dismiss
 
     // ── author
@@ -58,8 +59,9 @@ struct PostDetailView: View {
     @State private var imgRatio: CGFloat? = nil     // natural h/w
     @State private var faceTags: [UserTag] = []
 
-    init(post: Post) {
+    init(post: Post, navTitle: String = "Post") {
         self.post = post
+        self.navTitle = navTitle
         _isLiked     = State(initialValue: post.isLiked)
         _likesCount  = State(initialValue: post.likes)
         _outfitItems = State(initialValue: post.outfitItems ?? [])
@@ -94,7 +96,7 @@ struct PostDetailView: View {
             }
         }
         .animation(.easeInOut, value: showComments)
-        .navigationTitle("Post")
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Delete Post?", isPresented: $showDeleteConfirm,
                actions: deleteAlertButtons)
