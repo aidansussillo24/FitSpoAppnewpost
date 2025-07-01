@@ -5,7 +5,7 @@
 //  Masonry feed with pull‑to‑refresh + endless scroll.
 //  Updated 2025‑06‑30:
 //  • Added separate navigation targets in Hot‑Today row.
-//    – Tap 🔥 Hot Today  ➜  HotPostsView (top‑100)
+//    – Tap 🔥 Hot Today  ➜  HotPostsView (top‑10 feed)
 //    – Tap any avatar   ➜  PostDetailView for that post.
 //
 
