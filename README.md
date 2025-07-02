@@ -1,6 +1,7 @@
 # FitSpoAppnewpost
 
-![photoforgit](https://github.com/user-attachments/assets/9d12290a-02ee-4945-9f72-3ea6b0aa2952)
+![IMG_6308](https://github.com/user-attachments/assets/83c3bad3-0a41-43bd-9b5a-ed3f85c27329)
+
 
 ## Firestore setup
 
