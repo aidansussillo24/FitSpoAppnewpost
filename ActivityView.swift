@@ -37,6 +37,7 @@ private struct NotificationRow: View {
         switch note.kind {
         case .mention: return "mentioned you"
         case .comment: return "commented on your post"
+        case .like:    return "liked your post"
         }
     }
 
@@ -51,9 +52,11 @@ private struct NotificationRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(note.fromUsername) \(message)")
                     .font(.subheadline)
-                Text(note.text)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if note.kind != .like {
+                    Text(note.text)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             Spacer(minLength: 0)
         }

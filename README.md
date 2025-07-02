@@ -13,4 +13,4 @@ likes.
 
 ## Activity
 
-A simple Activity screen lists your notifications. Access it from the bell icon in the top-left corner of the Home view.
+A simple Activity screen lists your notifications. Access it from the bell icon in the top-left corner of the Home view. You will be notified when someone comments on or likes your posts.
