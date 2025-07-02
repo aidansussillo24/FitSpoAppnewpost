@@ -144,4 +144,18 @@ extension NetworkService {
             }
         }
     }
+
+    // MARK: - Remove notifications for a deleted post
+    /// Delete any notifications that reference the given post ID.
+    func deleteNotifications(forPostId postId: String,
+                             completion: ((Error?) -> Void)? = nil) {
+        db.collectionGroup("notifications")
+            .whereField("postId", isEqualTo: postId)
+            .getDocuments { snap, err in
+                if let err = err { completion?(err); return }
+                let batch = self.db.batch()
+                snap?.documents.forEach { batch.deleteDocument($0.reference) }
+                batch.commit { batchErr in completion?(batchErr) }
+            }
+    }
 }

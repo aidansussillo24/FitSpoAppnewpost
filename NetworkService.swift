@@ -294,8 +294,9 @@ final class NetworkService {
                     .delete { _ in }
             }
             ref.delete { err in
-                err == nil ? completion(.success(()))
-                           : completion(.failure(err!))
+                if let err { completion(.failure(err)); return }
+                self.deleteNotifications(forPostId: id) { _ in }
+                completion(.success(()))
             }
         }
     }
