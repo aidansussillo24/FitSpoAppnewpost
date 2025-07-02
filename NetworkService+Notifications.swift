@@ -158,4 +158,16 @@ extension NetworkService {
                 batch.commit { batchErr in completion?(batchErr) }
             }
     }
+
+    // MARK: - Remove a single notification
+    /// Delete the specified notification for the given user.
+    func deleteNotification(userId: String,
+                            notificationId: String,
+                            completion: ((Error?) -> Void)? = nil) {
+        db.collection("users")
+            .document(userId)
+            .collection("notifications")
+            .document(notificationId)
+            .delete { err in completion?(err) }
+    }
 }
