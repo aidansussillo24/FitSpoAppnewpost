@@ -41,14 +41,38 @@ extension NetworkService {
     // MARK: - Fetch notifications
     func fetchNotifications(for userId: String,
                             completion: @escaping (Result<[UserNotification],Error>) -> Void) {
-        db.collection("users")
+        let notes = db.collection("users")
             .document(userId)
             .collection("notifications")
-            .order(by: "timestamp", descending: true)
+
+        notes.order(by: "timestamp", descending: true)
             .getDocuments { snap, err in
                 if let err = err { completion(.failure(err)); return }
-                let list = snap?.documents.compactMap { UserNotification(from: $0.data()) } ?? []
-                completion(.success(list))
+
+                let docs = snap?.documents ?? []
+                var valid: [UserNotification] = []
+
+                let group = DispatchGroup()
+                for doc in docs {
+                    guard let postId = doc["postId"] as? String else { continue }
+                    group.enter()
+                    self.db.collection("posts").document(postId)
+                        .getDocument { postSnap, _ in
+                            defer { group.leave() }
+
+                            if postSnap?.exists == true,
+                               let note = UserNotification(from: doc.data()) {
+                                valid.append(note)
+                            } else {
+                                doc.reference.delete { _ in }
+                            }
+                        }
+                }
+
+                group.notify(queue: .main) {
+                    valid.sort { $0.timestamp > $1.timestamp }
+                    completion(.success(valid))
+                }
             }
     }
 
