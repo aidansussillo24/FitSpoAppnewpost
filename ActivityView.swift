@@ -7,19 +7,18 @@ struct ActivityView: View {
     @State private var listener: ListenerRegistration?
 
     var body: some View {
-        NavigationView {
-            List {
-                if notes.isEmpty {
-                    Text("No activity yet")
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(notes) { n in NotificationRow(note: n) }
-                }
+        List {
+            if notes.isEmpty {
+                Text("No activity yet")
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(notes) { n in NotificationRow(note: n) }
             }
-            .navigationTitle("Activity")
-            .onAppear(attach)
-            .onDisappear { listener?.remove(); listener = nil }
         }
+        .navigationTitle("Activity")
+        .listStyle(.plain)
+        .onAppear(attach)
+        .onDisappear { listener?.remove(); listener = nil }
     }
 
     private func attach() {
@@ -35,6 +34,8 @@ private struct NotificationRow: View {
 
     @State private var post: Post? = nil
     @State private var isLoadingPost = false
+    @State private var showProfile = false
+    @State private var showPost    = false
 
     private var message: String {
         switch note.kind {
@@ -46,12 +47,12 @@ private struct NotificationRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            NavigationLink(destination: ProfileView(userId: note.fromUserId)) {
+        HStack(alignment: .top, spacing: 12) {
+            Button { showProfile = true } label: {
                 AsyncImage(url: URL(string: note.fromAvatarURL ?? "")) { phase in
                     if let img = phase.image { img.resizable() } else { Color.gray.opacity(0.3) }
                 }
-                .frame(width: 36, height: 36)
+                .frame(width: 40, height: 40)
                 .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -68,18 +69,26 @@ private struct NotificationRow: View {
             Spacer(minLength: 0)
 
             if let post = post {
-                NavigationLink(destination: PostDetailView(post: post)) {
+                Button { showPost = true } label: {
                     PostCell(post: post)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 48, height: 48)
                 }
                 .buttonStyle(.plain)
             } else if isLoadingPost {
                 ProgressView()
-                    .frame(width: 44, height: 44)
+                    .frame(width: 48, height: 48)
             } else {
                 Color.clear
-                    .frame(width: 44, height: 44)
+                    .frame(width: 48, height: 48)
                     .onAppear(perform: fetchPost)
+            }
+        }
+        .background {
+            NavigationLink(destination: ProfileView(userId: note.fromUserId),
+                           isActive: $showProfile) { EmptyView() }.hidden()
+            if let p = post {
+                NavigationLink(destination: PostDetailView(post: p),
+                               isActive: $showPost) { EmptyView() }.hidden()
             }
         }
     }
