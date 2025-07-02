@@ -97,9 +97,13 @@ private struct NotificationRow: View {
         guard !isLoadingPost else { return }
         isLoadingPost = true
         NetworkService.shared.fetchPost(id: note.postId) { result in
-            if case .success(let p) = result {
-                DispatchQueue.main.async {
-                    post = p
+            switch result {
+            case .success(let p):
+                DispatchQueue.main.async { post = p }
+            case .failure:
+                if let uid = Auth.auth().currentUser?.uid {
+                    NetworkService.shared.deleteNotification(userId: uid,
+                                                           notificationId: note.id) { _ in }
                 }
             }
             isLoadingPost = false
