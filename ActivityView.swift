@@ -38,6 +38,7 @@ private struct NotificationRow: View {
         case .mention: return "mentioned you"
         case .comment: return "commented on your post"
         case .like:    return "liked your post"
+        case .tag:     return "tagged you in a post"
         }
     }
 

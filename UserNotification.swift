@@ -2,7 +2,7 @@ import Foundation
 
 /// A single in-app notification for the Activity screen.
 struct UserNotification: Identifiable, Codable {
-    enum Kind: String, Codable { case mention, comment, like }
+    enum Kind: String, Codable { case mention, comment, like, tag }
 
     let id: String
     let postId: String

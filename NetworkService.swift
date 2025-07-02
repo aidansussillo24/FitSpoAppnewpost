@@ -164,8 +164,15 @@ final class NetworkService {
                         }
                         batch.commit { err in
                             NotificationCenter.default.post(name: .didUploadPost, object: nil)
-                            err == nil ? completion(.success(()))
-                                       : completion(.failure(err!))
+                            if err == nil {
+                                self.handleTagNotifications(postId: doc.documentID,
+                                                           caption: caption,
+                                                           fromUserId: me.uid,
+                                                           taggedUsers: tags)
+                                completion(.success(()))
+                            } else {
+                                completion(.failure(err!))
+                            }
                         }
                     }
                 }

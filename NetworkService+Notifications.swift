@@ -117,4 +117,31 @@ extension NetworkService {
             self.addNotification(to: postOwnerId, notification: note) { _ in }
         }
     }
+
+    // MARK: - Convenience: create notifications for user tags
+    func handleTagNotifications(postId: String,
+                                caption: String,
+                                fromUserId: String,
+                                taggedUsers: [UserTag]) {
+        let targets = taggedUsers.map { $0.id }.filter { $0 != fromUserId }
+        guard !targets.isEmpty else { return }
+
+        db.collection("users").document(fromUserId).getDocument { snap, _ in
+            let data = snap?.data() ?? [:]
+            let name   = data["displayName"] as? String ??
+                         Auth.auth().currentUser?.displayName ?? "User"
+            let avatar = data["avatarURL"] as? String ??
+                         Auth.auth().currentUser?.photoURL?.absoluteString
+
+            for uid in targets {
+                let note = UserNotification(postId: postId,
+                                           fromUserId: fromUserId,
+                                           fromUsername: name,
+                                           fromAvatarURL: avatar,
+                                           text: caption,
+                                           kind: .tag)
+                self.addNotification(to: uid, notification: note) { _ in }
+            }
+        }
+    }
 }
