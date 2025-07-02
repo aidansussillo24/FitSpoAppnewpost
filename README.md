@@ -10,3 +10,7 @@ composite index for these fields. Create an index on the `posts` collection with
 building. Once done, rerun the app and it will display today's posts sorted by
 likes.
 
+
+## Activity
+
+A simple Activity screen lists your notifications. Access it from the bell icon in the top-left corner of the Home view.

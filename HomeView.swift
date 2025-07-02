@@ -82,6 +82,10 @@ struct HomeView: View {
         ZStack {
             Text("FitSpo").font(.largeTitle).fontWeight(.black)
             HStack {
+                NavigationLink(destination: ActivityView()) {
+                    Image(systemName: "bell")
+                        .font(.title2)
+                }
                 Spacer()
                 NavigationLink(destination: MessagesView()) {
                     Image(systemName: "bubble.left.and.bubble.right")
