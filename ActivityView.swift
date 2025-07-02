@@ -17,7 +17,7 @@ struct ActivityView: View {
                 }
             }
             .navigationTitle("Activity")
-            .onAppear(attach)
+            .onAppear(perform: attach)
             .onDisappear { listener?.remove(); listener = nil }
         }
     }
