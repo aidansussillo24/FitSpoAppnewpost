@@ -265,6 +265,11 @@ final class NetworkService {
             var updated = post
             updated.likes   = newLikes
             updated.isLiked = shouldLike
+            if shouldLike {
+                self.handleLikeNotification(postOwnerId: post.userId,
+                                           postId: post.id,
+                                           fromUserId: uid)
+            }
             completion(.success(updated))
         }
     }

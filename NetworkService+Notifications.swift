@@ -94,4 +94,27 @@ extension NetworkService {
             }
         }
     }
+
+    // MARK: - Convenience: create notification for a like
+    func handleLikeNotification(postOwnerId: String,
+                                postId: String,
+                                fromUserId: String) {
+        guard postOwnerId != fromUserId else { return }
+
+        db.collection("users").document(fromUserId).getDocument { snap, _ in
+            let data = snap?.data() ?? [:]
+            let name   = data["displayName"] as? String ??
+                         Auth.auth().currentUser?.displayName ?? "User"
+            let avatar = data["avatarURL"] as? String ??
+                         Auth.auth().currentUser?.photoURL?.absoluteString
+
+            let note = UserNotification(postId: postId,
+                                       fromUserId: fromUserId,
+                                       fromUsername: name,
+                                       fromAvatarURL: avatar,
+                                       text: "",
+                                       kind: .like)
+            self.addNotification(to: postOwnerId, notification: note) { _ in }
+        }
+    }
 }
