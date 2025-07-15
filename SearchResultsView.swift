@@ -87,13 +87,27 @@ struct SearchResultsView: View {
             let client  = SearchClient(appID: "6WFE31B7U3",
                                        apiKey: "2b7e223b3ca3c31fc6aaea704b80ca8c")
             let index   = client.index(withName: "posts")
-            let response: SearchResponse<Post> = try await index.search(
+            // `SearchResponse` from the Algolia client is not generic in the
+            // version bundled with this project.  Attempt the search and then
+            // decode the returned hits into our `Post` model manually.
+            let response = try await index.search(
                 query: Query(query).set(\.hitsPerPage, to: 40)
             )
 
-            posts = response.hits.map { hit in
-                var post = hit.object
-                post.objectID = hit.objectID.rawValue
+            posts = response.hits.compactMap { hit in
+                // Convert each hit's JSON payload into `Data` so that we can
+                // use `JSONDecoder` to build a `Post` instance.  If decoding
+                // fails we simply skip that entry.
+                guard
+                    let data = try? JSONSerialization.data(withJSONObject: hit, options: []),
+                    var post = try? JSONDecoder().decode(Post.self, from: data)
+                else { return nil }
+
+                // Algolia stores the object identifier separately; keep it
+                // around on the decoded post for later use.
+                if let id = hit["objectID"] as? String {
+                    post.objectID = id
+                }
                 return post
             }
         } catch {
