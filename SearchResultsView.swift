@@ -76,8 +76,6 @@ struct SearchResultsView: View {
             } catch {
                 print("User search error:", error.localizedDescription)
             }
-        } else if query.first == "#" {
-            // Placeholder for hashtag search
         } else {
             await searchPosts()
         }
@@ -93,11 +91,16 @@ struct SearchResultsView: View {
                 query: Query(query).set(\.hitsPerPage, to: 40)
             )
 
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .millisecondsSince1970
+
             posts = try response.hits.map { hit in
-                // decode the JSON hit payload into Post
-                let data = try JSONSerialization.data(withJSONObject: hit)
-                var post = try JSONDecoder().decode(Post.self, from: data)
-                // hit.objectID is a struct; take its rawValue String
+                var payload = hit
+                if payload["id"] == nil {
+                    payload["id"] = hit.objectID.rawValue
+                }
+                let data = try JSONSerialization.data(withJSONObject: payload)
+                var post = try decoder.decode(Post.self, from: data)
                 post.objectID = hit.objectID.rawValue
                 return post
             }

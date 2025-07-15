@@ -27,6 +27,7 @@ struct ExploreView: View {
     @State private var searchText = ""
     @State private var accountHits: [UserLite] = []
     @State private var isSearchingAccounts = false
+    @State private var showResults = false
 
     // chips / filters
     @State private var selectedChip = "All"
@@ -62,11 +63,15 @@ struct ExploreView: View {
             }
             .searchable(text: $searchText,
                         prompt: "Search accounts or #tags")
+            .onSubmit(of: .search) { if !searchText.isEmpty { showResults = true } }
             .onChange(of: searchText,  perform: handleSearchChange)
             .onChange(of: selectedChip) { _ in applyFilter() }
             .onChange(of: filter)       { _ in applyFilter() }
             .refreshable { await reload(clear: true) }
             .task        { await coldStart() }
+            .navigationDestination(isPresented: $showResults) {
+                SearchResultsView(query: searchText)
+            }
         }
     }
 
@@ -172,7 +177,10 @@ struct ExploreView: View {
                                 .padding(.horizontal, 12)
                                 .background(Color(.systemGray5))
                                 .clipShape(Capsule())
-                                .onTapGesture { searchText = "#"+tag }
+                                .onTapGesture {
+                                    searchText = "#" + tag
+                                    showResults = true
+                                }
                         }
                     }
                     .padding(.horizontal, 6)
