@@ -87,20 +87,12 @@ struct SearchResultsView: View {
             let client  = SearchClient(appID: "6WFE31B7U3",
                                        apiKey: "2b7e223b3ca3c31fc6aaea704b80ca8c")
             let index   = client.index(withName: "posts")
-            let response = try await index.search(
+            let response: SearchResponse<Post> = try await index.search(
                 query: Query(query).set(\.hitsPerPage, to: 40)
             )
 
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .millisecondsSince1970
-
-            posts = try response.hits.map { hit in
-                var payload = hit
-                if payload["id"] == nil {
-                    payload["id"] = hit.objectID.rawValue
-                }
-                let data = try JSONSerialization.data(withJSONObject: payload)
-                var post = try decoder.decode(Post.self, from: data)
+            posts = response.hits.map { hit in
+                var post = hit.object
                 post.objectID = hit.objectID.rawValue
                 return post
             }
