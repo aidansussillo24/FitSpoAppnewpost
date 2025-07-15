@@ -83,18 +83,23 @@ struct SearchResultsView: View {
         }
     }
 
-    // MARK: - Algolia helper
     @MainActor
     private func searchPosts() async {
         do {
-            let client = SearchClient(appID: "<APP_ID>", apiKey: "<SEARCH_ONLY_KEY>")
-            let index  = client.index(withName: "posts")
-            let response = try await index.search(query: Query(query).set(\.hitsPerPage, to: 40))
-            let hits: [Hit<Post>] = try response.decodeHits()
-            posts = hits.map { hit in
-                var p = hit.object
-                p.objectID = hit.objectID
-                return p
+            let client  = SearchClient(appID: "6WFE31B7U3",
+                                       apiKey: "2b7e223b3ca3c31fc6aaea704b80ca8c")
+            let index   = client.index(withName: "posts")
+            let response = try await index.search(
+                query: Query(query).set(\.hitsPerPage, to: 40)
+            )
+
+            posts = try response.hits.map { hit in
+                // decode the JSON hit payload into Post
+                let data = try JSONSerialization.data(withJSONObject: hit)
+                var post = try JSONDecoder().decode(Post.self, from: data)
+                // hit.objectID is a struct; take its rawValue String
+                post.objectID = hit.objectID.rawValue
+                return post
             }
         } catch {
             print("Algolia search error:", error.localizedDescription)
